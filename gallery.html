@@ -30,7 +30,9 @@
   <link rel="stylesheet" href="css/aos.css">
   <link rel="stylesheet" href="css/style.css">
 
+
   <title>Git-groupe8</title>
+
 </head>
 
 <body>
@@ -82,6 +84,7 @@
             <li><a href="staff.html">Our Staff</a></li>
             <li><a href="news.html">News</a></li>
             <li><a href="gallery.html">Gallery</a></li>
+
             <li><a href="about.html">About</a></li>
             <li><a href="contact.html">Contact</a></li>
           </ul>
@@ -122,9 +125,6 @@
     </div> <!-- /.container -->
 
   </div> <!-- /.untree_co-hero -->
-
-
-
 
   <div class="untree_co-section">
     <div class="container">
@@ -192,6 +192,7 @@
       </div>
     </div>
   </div> <!-- /.untree_co-section -->
+
 
   <div class="site-footer">
 
@@ -267,7 +268,9 @@
 
       <div class="row mt-5">
         <div class="col-12 text-center">
+
           <p class="copyright">Copyright &copy;<script>document.write(new Date().getFullYear());</script>. All Rights Reserved. &mdash; Designed with love by <a href="https://untree.co">Untree.co</a>  Distributed By <a href="https://themewagon.com">ThemeWagon</a></p>  <!-- License information: https://untree.co/license/ -->
+
           </div>
         </div>
       </div> <!-- /.container -->
@@ -284,6 +287,25 @@
     <script src="js/popper.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/owl.carousel.min.js"></script>
+
+    <script>
+      $(document).ready(function(){
+        $('.gallery-carousel').owlCarousel({
+          loop:true,
+          margin:10,
+          nav:true,
+          dots:true,
+          autoplay:true,
+          autoplayTimeout:3000,
+          responsive:{
+            0:{items:1},
+            600:{items:2},
+            1000:{items:3}
+          }
+        });
+      });
+    </script>
+
     <script src="js/jquery.animateNumber.min.js"></script>
     <script src="js/jquery.waypoints.min.js"></script>
     <script src="js/jquery.fancybox.min.js"></script>

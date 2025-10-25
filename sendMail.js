@@ -25,7 +25,7 @@ if (process.env.NOTIFY_EMAILS) {
 let lintersResults = "Aucun résultat de linters disponible.";
 try {
   // Exemple avec stylelint et eslint
-  lintersResults = execSync("npx stylelint '/*.css' --formatter string && npx eslint . --format compact")
+  lintersResults = execSync("npx stylelint '**/*.css' --formatter string && npx eslint . --format compact")
     .toString()
     .trim();
 } catch {

@@ -1,0 +1,4 @@
+**/*.min.css
+css/vendor/*
+css/mixins/*
+fonts/*

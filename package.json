@@ -1,0 +1,33 @@
+{
+  "name": "tp-git-groupe8",
+  "type": "CommonJS",
+  "version": "1.0.0",
+  "description": "Travail pratique Github en groupe",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zidane2202/tp-git-groupe8.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zidane2202/tp-git-groupe8/issues"
+  },
+  "homepage": "https://github.com/zidane2202/tp-git-groupe8#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.38.0",
+    "eslint": "^9.38.0",
+    "globals": "^16.4.0",
+    "htmlhint": "^1.7.1",
+    "stylelint": "^16.25.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "nodemailer": "^7.0.10",
+    "openai": "^6.7.0"
+  }
+}

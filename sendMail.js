@@ -16,7 +16,7 @@ import { execSync } from "child_process";
       toEmails = execSync("git config user.email").toString().trim();
       console.log("📧 Adresse Git détectée :", toEmails);
     } catch {
-      toEmails = "ton.email@exemple.com";
+      toEmails = "pythiemorne22@gmail.com";
       console.log("⚠ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
     }
   }

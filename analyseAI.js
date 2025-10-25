@@ -1,12 +1,11 @@
-// analyseAI.js
-import OpenAI from "openai";
+import 'dotenv/config'; // charge automatiquement les variables depuis .env
+
+import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Le client lit la clé API depuis la variable d'environnement GEMINI_API_KEY
+const ai = new GoogleGenAI({});
 
-// Lire le diff depuis stdin
 const readStdin = async () => {
   return new Promise((resolve) => {
     let data = "";
@@ -32,22 +31,19 @@ Tu vas analyser le diff ci-dessous (format git diff --cached).
    - objet (ligne)
    - corps du message (explication, gravité, suggestion de correction, liens utiles si pertinent)
 Si tout est OK, écris "OK" sur la première ligne puis un e-mail de validation.
-Réponds en français.
 Diff :
 ${diff}
   `;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // ou "gpt-4-turbo" selon ton accès; adapte ici
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 800,
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
     });
 
-    const message = response.choices[0].message.content;
+    const message = response.text;
     fs.writeFileSync("ai_report.txt", message, "utf8");
 
-    // Considérons OK si la réponse commence par "OK" (insensible à la casse)
     if (/^\s*ok\b/i.test(message)) {
       console.log("✅ IA: OK");
       process.exit(0);
@@ -57,7 +53,7 @@ ${diff}
       process.exit(1);
     }
   } catch (err) {
-    console.error("Erreur lors de l'appel OpenAI :", err);
+    console.error("Erreur lors de l'appel Gemini :", err);
     fs.writeFileSync("ai_report.txt", "Erreur de communication avec l'API IA.", "utf8");
     process.exit(1);
   }

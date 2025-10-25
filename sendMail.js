@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { GoogleGenAI } from "@google/genai";
 import { execSync } from "child_process";
 
+(async () => {
 // --- 1️⃣ Récupération de l'état du push ---
 const status = process.argv[2] || "success";
 
@@ -16,23 +17,47 @@ if (process.env.NOTIFY_EMAILS) {
     console.log("📧 Adresse Git détectée :", toEmails);
   } catch {
     toEmails = "ton.email@exemple.com";
-    console.log("⚠️ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
+    console.log("⚠ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
   }
 }
 
-// --- 3️⃣ Génération du mail via Gemini ---
+// --- 3️⃣ Lecture des résultats des linters ---
+let lintersResults = "Aucun résultat de linters disponible.";
+try {
+  // Exemple avec stylelint et eslint
+  lintersResults = execSync("npx stylelint '/*.css' --formatter string && npx eslint . --format compact")
+    .toString()
+    .trim();
+} catch {
+  console.log("⚠ Impossible de récupérer les résultats des linters.");
+}
+
+// --- 4️⃣ Lecture du diff pour le rapport ---
+let diffText = "Aucun diff disponible.";
+try {
+  diffText = execSync("git diff --cached").toString();
+} catch {
+  console.log("⚠ Impossible de récupérer le diff Git, mail générique sera envoyé.");
+}
+
+// --- 5️⃣ Génération du mail via Gemini ---
 const ai = new GoogleGenAI({});
 
-async function generateMail(diffText) {
+async function generateMail(lintersResults, diffText) {
   const prompt = `
-Tu es un assistant expert en développement. Génère un mail professionnel basé sur le diff suivant :
-1) Analyse le diff et indique si des erreurs ou bugs sont présents.
-2) Rédige un objet de mail clair.
-3) Rédige le corps du mail expliquant les problèmes et les corrections suggérées.
+Tu es un expert en développement. Génère un mail professionnel basé sur l'analyse suivante du projet :
+
+1) Résultats des linters et autres outils d'analyse statique
+2) Diff Git des fichiers modifiés
+3) Recommandations, remarques et suggestions d'amélioration pour le projet
+
+Analyse linters :
+${lintersResults}
 
 Diff :
 ${diffText}
-Réponds en français, format : 
+
+Réponds en français, format :
 Objet : <objet du mail>
 <texte du mail>
 `;
@@ -45,24 +70,16 @@ Objet : <objet du mail>
   return response.text;
 }
 
-// --- 4️⃣ Lecture du diff pour le rapport IA ---
-let diffText = "Aucun diff disponible.";
-try {
-  diffText = execSync("git diff --cached").toString();
-} catch {
-  console.log("⚠️ Impossible de récupérer le diff Git, mail générique sera envoyé.");
-}
-
-// --- 5️⃣ Génération du contenu mail ---
+// --- 6️⃣ Génération du contenu mail ---
 let aiMailContent;
 try {
-  aiMailContent = await generateMail(diffText);
+  aiMailContent = await generateMail(lintersResults, diffText);
 } catch (err) {
   console.error("❌ Erreur génération mail IA :", err);
   aiMailContent = "Impossible de générer le contenu via l'IA.";
 }
 
-// --- 6️⃣ Préparation du sujet et du corps du mail ---
+// --- 7️⃣ Préparation du sujet et du corps du mail ---
 let subject = status === "fail" ? "❌ Push bloqué - Analyse IA" : "✅ Push validé - Analyse IA";
 let body = aiMailContent;
 
@@ -70,7 +87,7 @@ let body = aiMailContent;
 const objMatch = aiMailContent.match(/Objet\s*:\s*(.+)/i);
 if (objMatch) subject = objMatch[1].trim();
 
-// --- 7️⃣ Configuration du transporteur SMTP ---
+// --- 8️⃣ Configuration du transporteur SMTP ---
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
@@ -81,9 +98,9 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// --- 8️⃣ Préparation et envoi du mail ---
+// --- 9️⃣ Préparation et envoi du mail ---
 const mailOptions = {
-  from: `"Git AI Bot" <${process.env.SMTP_USER}>`,
+  from: `Git AI Bot <${process.env.SMTP_USER}>`,
   to: toEmails,
   subject,
   text: body,
@@ -95,3 +112,5 @@ try {
 } catch (err) {
   console.error("❌ Erreur envoi mail :", err);
 }
+
+})(); // Fin de la fonction async auto-exécutée

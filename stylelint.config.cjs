@@ -25,7 +25,8 @@ module.exports = {
     "color-function-notation": null,
     "color-hex-length": null,
     "value-no-vendor-prefix": null,
-    "selector-pseudo-element-colon-notation": null
+    "selector-pseudo-element-colon-notation": null,
+    "tagname-lowercase": null,
   },
   ignoreFiles: [
     "fonts/",                  // Ignorer tous les fichiers fonts

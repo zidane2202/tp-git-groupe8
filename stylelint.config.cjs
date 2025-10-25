@@ -25,9 +25,8 @@ module.exports = {
     "color-function-notation": null,
     "color-hex-length": null,
     "value-no-vendor-prefix": null,
-    "selector-pseudo-element-colon-notation": null,
-    "tagname-lowercase": null,
-  },
+    "selector-pseudo-element-colon-notation": null
+    },
   ignoreFiles: [
     "fonts/",                  // Ignorer tous les fichiers fonts
     "css/vendor/",             // Ignorer tous les fichiers vendors
@@ -36,6 +35,6 @@ module.exports = {
     "css/style.css",
     "css/_mixins.css",
     "css/_site-blocks.css",
-    "register.html"
+    
   ]
 };

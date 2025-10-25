@@ -34,6 +34,7 @@ module.exports = {
     "css/bootstrap-datepicker.css",
     "css/style.css",
     "css/_mixins.css",
-    "css/_site-blocks.css"
+    "css/_site-blocks.css",
+    "register.html"
   ]
 };

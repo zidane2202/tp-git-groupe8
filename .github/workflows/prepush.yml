@@ -1,6 +1,9 @@
 name: Code Review and Notification
 
-on: push
+on:
+  push:  # fonctionne sur tous les pushes, toutes branches
+    branches:
+      - '**'
 
 jobs:
   review:
@@ -10,7 +13,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 2
+        fetch-depth: 2  # nécessaire pour git diff
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -23,14 +26,17 @@ jobs:
     - name: Run Code Review Script
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        SMTP_PASS: ${{ secrets.SMTP_PASS }}
         SMTP_USER: ${{ secrets.SMTP_USER }}
+        SMTP_PASS: ${{ secrets.SMTP_PASS }}
       run: |
-        # Récupère l'email du committer
+        echo "Récupération de l'email du committer..."
         COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+        echo "Commit author: $COMMIT_AUTHOR_EMAIL"
 
-        # Liste les fichiers modifiés séparés par des espaces
-        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | tr '\n' ' ')
+        echo "Récupération des fichiers modifiés..."
+        # Compatible premier commit et merges
+        CHANGED_FILES=$(git diff --name-only $GITHUB_SHA~1 $GITHUB_SHA | tr '\n' ' ')
+        echo "Fichiers modifiés: $CHANGED_FILES"
 
-        # Execute le script Python
-        python analyze_and_notify.py "$COMMIT_AUTHOR_EMAIL" $CHANGED_FILES
+        echo "Exécution du script Python..."
+        python analyze_and_notify.py "$COMMIT_AUTHOR_EMAIL" "$CHANGED_FILES"

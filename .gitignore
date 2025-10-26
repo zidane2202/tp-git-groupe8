@@ -1,8 +1,0 @@
-# Secrets locaux
-.env
-# Node.js
-node_modules/
-dist/
-
-# Logs
-*.log

@@ -13,8 +13,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        # Fetch the previous commit to compare changes
-        fetch-depth: 2 
+        fetch-depth: 2
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -26,16 +25,15 @@ jobs:
 
     - name: Run Code Review Script
       env:
-        # Pass the secrets securely to the script as environment variables
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         SMTP_PASS: ${{ secrets.SMTP_PASS }}
         SMTP_USER: ${{ secrets.SMTP_USER }}
       run: |
-        # Get the email of the committer who made the push
+        # Récupère l'email du committer
         COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
-        
-        # Determine the files that were changed in the last commit
-        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
-        
-        # Execute the Python script
-        python analyze_and_notify.py "$COMMIT_AUTHOR_EMAIL" "$CHANGED_FILES"
+
+        # Liste les fichiers modifiés séparés par des espaces
+        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | tr '\n' ' ')
+
+        # Execute le script Python
+        python analyze_and_notify.py "$COMMIT_AUTHOR_EMAIL" $CHANGED_FILES

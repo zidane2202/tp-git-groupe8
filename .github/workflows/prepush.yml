@@ -1,47 +1,41 @@
-name: AI Code Review & Mailer
+name: Code Review and Notification
 
 on:
-  push:        # se déclenche sur tous les pushs (toutes branches)
+  push:
+    branches:
+      - main
 
 jobs:
-  ai-review:
+  review:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2  # nécessaire pour comparer le dernier commit
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # Fetch the previous commit to compare changes
+        fetch-depth: 2 
 
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
 
-      - name: 📦 Install dependencies
-        run: pip install google-genai
+    - name: Install dependencies
+      run: pip install -r requirements.txt
 
-      - name: 🔍 Get committer email and changed files
-        id: changes
-        run: |
-          # Récupérer l'email du commit
-          COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
-          echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
-
-          # Récupérer la liste des fichiers modifiés séparés par des espaces
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | tr '\n' ' ')
-          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
-
-      - name: 🤖 Run AI Review and Send Email
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          RECIPIENT_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
-          CHANGED_FILES: ${{ env.CHANGED_FILES }}
-        run: |
-          # Vérifier les fichiers reçus
-          echo "Fichiers modifiés pour l'analyse : $CHANGED_FILES"
-
-          # Lancer le script Python en passant l'email et la liste des fichiers
-          python scripts/review_mailer.py "$RECIPIENT_EMAIL" "$CHANGED_FILES"
+    - name: Run Code Review Script
+      env:
+        # Pass the secrets securely to the script as environment variables
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+      run: |
+        # Get the email of the committer who made the push
+        COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+        
+        # Determine the files that were changed in the last commit
+        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+        
+        # Execute the Python script
+        python analyze_and_notify.py "$COMMIT_AUTHOR_EMAIL" "$CHANGED_FILES"

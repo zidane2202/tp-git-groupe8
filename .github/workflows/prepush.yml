@@ -24,8 +24,10 @@ jobs:
       - name: 🔍 Get committer email and changed files
         id: changes
         run: |
-          echo "COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_ENV
-          echo "CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)" >> $GITHUB_ENV
+          COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
       - name: 🤖 Run AI Review and Send Email
         env:

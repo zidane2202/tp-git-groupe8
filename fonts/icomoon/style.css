@@ -1,5 +1,7 @@
 @font-face {
+
   font-family: 'icomoon';
+
   src:  url('fonts/icomoon.eot?10si43');
   src:  url('fonts/icomoon.eot?10si43#iefix') format('embedded-opentype'),
     url('fonts/icomoon.ttf?10si43') format('truetype'),
@@ -11,8 +13,9 @@
 
 [class^="icon-"], [class*=" icon-"] {
   /* use !important to prevent issues with browser extensions that change fonts */
+
   font-family: 'icomoon' !important;
-  speak: none;
+
   font-style: normal;
   font-weight: normal;
   font-variant: normal;
@@ -23,6 +26,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
 
 .icon-asterisk:before {
   content: "\f069";
@@ -4915,5 +4919,6 @@
   content: "\e901";
 }
 .icon-zoom_out_map:before {
+
   content: "\e56b";
 }

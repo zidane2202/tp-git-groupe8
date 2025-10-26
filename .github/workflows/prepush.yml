@@ -1,7 +1,7 @@
 name: AI Code Review & Mailer
 
 on:
-  push:  # triggers on every push (all branches)
+  push:        # se déclenche sur tous les pushs (toutes branches)
 
 jobs:
   ai-review:
@@ -11,7 +11,7 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # needed to compare last commit
+          fetch-depth: 2  # nécessaire pour comparer le dernier commit
 
       - name: 🐍 Set up Python
         uses: actions/setup-python@v5
@@ -34,5 +34,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          RECIPIENT_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
+          CHANGED_FILES: ${{ env.CHANGED_FILES }}
         run: |
-          python scripts/review_mailer.py "${{ env.COMMIT_AUTHOR_EMAIL }}" "${{ env.CHANGED_FILES }}"
+          python scripts/review_mailer.py "$RECIPIENT_EMAIL" "$CHANGED_FILES"

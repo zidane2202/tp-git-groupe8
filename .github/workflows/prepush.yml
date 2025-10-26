@@ -1,9 +1,6 @@
 name: Code Review and Notification
 
-on:
-  push:
-    branches:
-      - main
+on: push
 
 jobs:
   review:

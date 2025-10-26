@@ -1,7 +1,7 @@
 name: AI Code Review & Mailer
 
 on:
-  push:  # se déclenche sur tous les pushs (toutes branches)
+  push:        # se déclenche sur tous les pushs (toutes branches)
 
 jobs:
   ai-review:
@@ -24,12 +24,13 @@ jobs:
       - name: 🔍 Get committer email and changed files
         id: changes
         run: |
+          # Récupérer l'email du commit
           COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
-          # On remplace les retours à la ligne par ':::' pour passer en une seule variable
-          FILES=$(echo "$CHANGED_FILES" | tr '\n' ':::')
           echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
-          echo "CHANGED_FILES=$FILES" >> $GITHUB_ENV
+
+          # Récupérer la liste des fichiers modifiés séparés par des espaces
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | tr '\n' ' ')
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
       - name: 🤖 Run AI Review and Send Email
         env:
@@ -39,4 +40,8 @@ jobs:
           RECIPIENT_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
           CHANGED_FILES: ${{ env.CHANGED_FILES }}
         run: |
+          # Vérifier les fichiers reçus
+          echo "Fichiers modifiés pour l'analyse : $CHANGED_FILES"
+
+          # Lancer le script Python en passant l'email et la liste des fichiers
           python scripts/review_mailer.py "$RECIPIENT_EMAIL" "$CHANGED_FILES"

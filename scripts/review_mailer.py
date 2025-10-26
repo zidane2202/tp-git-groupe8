@@ -15,11 +15,16 @@ if len(sys.argv) < 3:
     sys.exit(1)
 
 RECIPIENT_EMAIL = sys.argv[1]
-CHANGED_FILES = sys.argv[2].split()
+
+# Séparer correctement les fichiers, en supprimant les éventuels retours à la ligne ou caractères vides
+CHANGED_FILES = [f.strip() for f in sys.argv[2].split() if f.strip()]
 
 # --- Fonctions d'aide ---
 def get_file_content(file_path):
     """Lit le contenu d'un fichier (jusqu'à 100 lignes)."""
+    if not os.path.isfile(file_path):
+        print(f"⚠️ Fichier introuvable ou ignoré: {file_path}")
+        return f"--- Impossible de lire le fichier: {file_path} (non trouvé) ---\n"
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = "".join(f.readlines()[:100])
@@ -73,9 +78,9 @@ def send_email(recipient, subject, html_body):
         server.login(SMTP_USER, SMTP_PASS)
         server.sendmail(SMTP_USER, recipient, msg.as_string())
         server.close()
-        print(f"Succès: Email envoyé à {recipient}")
+        print(f"✅ Succès: Email envoyé à {recipient}")
     except Exception as e:
-        print(f"Erreur: Échec de l'envoi de l'email à {recipient}. Erreur: {e}")
+        print(f"❌ Erreur: Échec de l'envoi de l'email à {recipient}. Erreur: {e}")
         print("\n--- Contenu HTML non envoyé (pour débogage) ---\n")
         print(html_body)
         print("\n----------------------------------------------------\n")
@@ -105,7 +110,7 @@ send_email(RECIPIENT_EMAIL, email_subject, html_review)
 
 # 6. Faire échouer le push si erreurs détectées
 if errors_detected:
-    print("Des erreurs ont été détectées dans le code. Le push va échouer.")
+    print("⚠️ Des erreurs ont été détectées dans le code. Le push va échouer.")
     sys.exit(1)
 else:
-    print("Le code est valide. Le push peut continuer.")
+    print("✅ Le code est valide. Le push peut continuer.")

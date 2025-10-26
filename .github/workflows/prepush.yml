@@ -23,20 +23,20 @@ jobs:
     - name: Install dependencies
       run: pip install -r requirements.txt
 
-    - name: Run Code Review Script
+    - name: 🔍 Get committer email and changed files
+      id: changes
+      run: |
+        COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+        echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
+        echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+
+    - name: 🤖 Run AI Review and Send Email
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         SMTP_USER: ${{ secrets.SMTP_USER }}
         SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        RECIPIENT_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
+        CHANGED_FILES: ${{ env.CHANGED_FILES }}
       run: |
-        echo "Récupération de l'email du committer..."
-        COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
-        echo "Commit author: $COMMIT_AUTHOR_EMAIL"
-
-        echo "Récupération des fichiers modifiés..."
-        # Compatible premier commit et merges
-        CHANGED_FILES=$(git diff --name-only $GITHUB_SHA~1 $GITHUB_SHA | tr '\n' ' ')
-        echo "Fichiers modifiés: $CHANGED_FILES"
-
-        echo "Exécution du script Python..."
-        python analyze_and_notify.py "$COMMIT_AUTHOR_EMAIL" "$CHANGED_FILES"
+        python scripts/review_mailer.py "$RECIPIENT_EMAIL" "$CHANGED_FILES"

@@ -37,6 +37,7 @@ def generate_prompt(changed_files):
         "Si des erreurs ou suggestions existent, indiquez-les clairement, avec corrections si possible.\n\n"
         "--- Fichiers Modifiés ---\n"
     )
+    
     for file in changed_files:
         if file.startswith('.github/') or file.endswith(('.png', '.jpg', '.gif', '.bin')):
             continue

@@ -1,0 +1,41 @@
+#!/bin/bash
+#
+# Hook pre-push : vérifie linters + IA avant d'autoriser le push
+#
+
+echo "🔍 Lancement des vérifications : linters..."
+
+# 1) Linters
+npx eslint . --ext .js
+eslint_status=$?
+
+npx htmlhint "**/*.html"
+html_status=$?
+
+npx stylelint "**/*.css"
+css_status=$?
+
+if [ $eslint_status -ne 0 ] || [ $html_status -ne 0 ] || [ $css_status -ne 0 ]; then
+  echo "❌ Erreurs détectées par les linters. Push annulé."
+  # On génère un rapport simple et on envoie mail (ici on signale juste "linters")
+  echo "Erreurs linters détectées" > ai_report.txt
+  node sendMail.js fail
+  exit 1
+fi
+
+# 2) Analyse IA : on envoie le diff mis en cache au script Node
+echo "🤖 Exécution de l'analyse IA..."
+# Récupère le diff des changements mis en stage (cached)
+git diff --cached --unified=0 | node analyseAI.js
+ai_status=$?
+
+if [ $ai_status -ne 0 ]; then
+  echo "❌ L'IA a trouvé des problèmes. Push annulé."
+  node sendMail.js fail
+  exit 1
+fi
+
+# 3) Tout OK
+echo "✅ Linters et IA OK. Push autorisé."
+node sendMail.js success
+exit 0

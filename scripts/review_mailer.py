@@ -18,6 +18,7 @@ RECIPIENT_EMAIL = sys.argv[1]
 CHANGED_FILES = sys.argv[2].split()
 
 # --- Fonctions d'aide ---
+
 def get_file_content(file_path):
     """Lit le contenu d'un fichier (jusqu'à 100 lignes)."""
     try:
@@ -28,7 +29,7 @@ def get_file_content(file_path):
         return f"--- Impossible de lire le fichier: {file_path} (Erreur: {e}) ---\n"
 
 def generate_prompt(changed_files):
-    """Génère le prompt pour l'IA avec le contenu des fichiers modifiés."""
+    """Génère le prompt pour l'IA avec le contenu des fichiers."""
     prompt = (
         "Vous êtes un expert en revue de code. Analysez les changements suivants, "
         "concentrez-vous sur la qualité, cohérence, erreurs potentielles et améliorations. "
@@ -84,7 +85,7 @@ def send_email(recipient, subject, html_body):
 print(f"Début de l'analyse pour le push de: {RECIPIENT_EMAIL}")
 print(f"Fichiers modifiés: {', '.join(CHANGED_FILES)}")
 
-# 1. Générer le prompt pour IA
+# 1. Générer le prompt
 review_prompt = generate_prompt(CHANGED_FILES)
 
 # 2. Obtenir la revue IA
@@ -100,10 +101,10 @@ email_subject = (
     "✅ Revue de Code Automatisée - Code validé"
 )
 
-# 5. Envoyer l'email (toujours)
+# 5. Envoyer l'email
 send_email(RECIPIENT_EMAIL, email_subject, html_review)
 
-# 6. Faire échouer le push uniquement si erreurs détectées
+# 6. Faire échouer le push si erreurs détectées
 if errors_detected:
     print("Des erreurs ont été détectées dans le code. Le push va échouer.")
     sys.exit(1)

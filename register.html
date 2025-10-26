@@ -113,13 +113,34 @@
     </div> <!-- /.container -->
   </div> <!-- /.untree_co-hero -->
 
-  <div class="untree_co-section">
+
+
+
+  <div class="futuristic-section">
     <div class="container">
-      <div class="row mb-5 justify-content-center">
-        <div class="col-lg-5 mx-auto order-1" data-aos="fade-up" data-aos-delay="200">
-          <form action="#" class="form-box">
-            <div class="row">
-              <div class="col-12 mb-3">
+      <div class="ff-scene">
+        <div class="ff-stage" data-aos="fade-up">
+          <!-- animated SVG drawing -->
+          <svg class="ff-svg" viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="g1" x1="0%" x2="100%">
+                <stop offset="0%" stop-color="#7B5CFF"/>
+                <stop offset="100%" stop-color="#BFA8FF"/>
+              </linearGradient>
+            </defs>
+            <circle class="svg-path" cx="210" cy="210" r="140" stroke="url(#g1)" stroke-width="2" fill="none" />
+            <path class="svg-path" d="M120 240 C150 120, 270 120, 300 240" stroke="url(#g1)" stroke-width="2" fill="none"/>
+            <g transform="translate(210,210)">
+              <rect class="svg-path" x="-40" y="-80" width="80" height="40" rx="6" stroke="url(#g1)" stroke-width="2" fill="none" />
+            </g>
+          </svg>
+
+          <!-- form card that emerges in 3D -->
+          <div class="ff-card">
+            <div class="form-title">Create your account</div>
+            <div class="form-sub">Join us — c'est gratuit et rapide.</div>
+            <form action="#" class="">
+              <div class="form-group mb-2">
                 <input type="text" class="form-control" placeholder="Full name">
               </div>
               <div class="form-group mb-2">
@@ -138,6 +159,16 @@
               <div class="col-12">
                 <input type="submit" value="Send Message" class="btn btn-primary">
               </div>
+            </form>
+
+            <!-- social icons on the form -->
+            <div class="form-social">
+              <a href="#" title="Instagram"><span class="icon-instagram"></span></a>
+              <a href="#" title="Twitter"><span class="icon-twitter"></span></a>
+              <a href="#" title="Facebook"><span class="icon-facebook"></span></a>
+              <a href="#" title="LinkedIn"><span class="icon-linkedin"></span></a>
+              <a href="#" title="YouTube"><span class="icon-youtube"></span></a>
+              <a href="#" title="Pinterest"><span class="icon-pinterest"></span></a>
             </div>
             </form>
 
@@ -206,7 +237,7 @@
         <div class="col-lg-3">
           <div class="widget">
             <h3>Contact</h3>
-            <address>123 Rue de l'Éducation, Ville du Savoir, 3910</address>
+            <address>Yaounde Bastos, Rue 1899</address>
             <ul class="list-unstyled links mb-4">
               <li><a href="tel:+11234567890">+1 (123) 456-7890</a></li>
               <li><a href="tel:+11234567890">+1 (123) 456-7890</a></li>
@@ -224,6 +255,27 @@
         </div>
       </div>
     </div>
+  </div>
+
+    <script src="js/jquery-3.4.1.min.js"></script>
+    <script>
+      // trigger the SVG draw and card emergence (runs after jQuery is loaded)
+      $(function(){
+        setTimeout(function(){ $('.ff-svg').addClass('visible'); }, 200);
+        setTimeout(function(){ $('.ff-card').addClass('visible'); }, 900);
+      });
+    </script>
+    <script src="js/popper.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/owl.carousel.min.js"></script>
+    <script src="js/jquery.animateNumber.min.js"></script>
+    <script src="js/jquery.waypoints.min.js"></script>
+    <script src="js/jquery.fancybox.min.js"></script>
+    <script src="js/jquery.sticky.js"></script>
+    <script src="js/aos.js"></script>
+    <script src="js/custom.js"></script>
+
+  </body>
 
     <script src="js/jquery-3.4.1.min.js"></script>
 

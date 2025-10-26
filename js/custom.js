@@ -1,5 +1,43 @@
 AOS.init({
 
+	// News button: faire défiler les images de la première section
+	(function(){
+		var images = $('.untree_co-section .media-h figure img').map(function(){
+			return $(this).attr('src');
+		}).get();
+		var idx = 0;
+		var intervalId = null;
+		var $btn = $('#btn-news');
+		var $target = $('.untree_co-section .col-lg-6:first figure img');
+
+		if (images.length === 0 || $target.length === 0) {
+			// Rien à faire si pas d'images
+			return;
+		}
+
+		// position initiale en fonction de la source courante
+		var currentSrc = $target.attr('src');
+		var startIndex = images.indexOf(currentSrc);
+		if (startIndex >= 0) idx = startIndex;
+
+		$btn.on('click', function(e){
+			e.preventDefault();
+			if (intervalId) {
+				clearInterval(intervalId);
+				intervalId = null;
+				$btn.text('News');
+			} else {
+				$btn.text('Stop');
+				intervalId = setInterval(function(){
+					idx = (idx + 1) % images.length;
+					$target.fadeOut(300, function(){
+						$target.attr('src', images[idx]).fadeIn(300);
+					});
+				}, 2000);
+			}
+		});
+	})();
+
   duration: 800,
   easing: "slide",
   once: true,

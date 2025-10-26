@@ -27,7 +27,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-
 .icon-asterisk:before {
   content: "\f069";
 }
@@ -4919,6 +4918,9 @@
   content: "\e901";
 }
 .icon-zoom_out_map:before {
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/ketchemen-joryn-elvin
   content: "\e56b";
 }

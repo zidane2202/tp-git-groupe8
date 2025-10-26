@@ -37,6 +37,7 @@ body {
   color: #000000 !important; }
 
 .text-secondary {
+<<<<<<< HEAD
   color: #BFA8FF !important; }
 
 .bg-primary-light {
@@ -47,11 +48,27 @@ body {
 
 a {
   color: #7B5CFF;
+=======
+  color: #00aeff !important; }
+
+.bg-primary-light {
+  background-color: rgba(19, 106, 213, 0.05); }
+
+.bg-secondary-light {
+  background-color: rgba(0, 174, 255, 0.05); }
+
+a {
+  color: #136ad5;
+>>>>>>> origin/ketchemen-joryn-elvin
   -webkit-transition: .3s all ease;
   -o-transition: .3s all ease;
   transition: .3s all ease; }
   a:hover {
+<<<<<<< HEAD
     color: #7B5CFF;
+=======
+    color: #136ad5;
+>>>>>>> origin/ketchemen-joryn-elvin
     text-decoration: none; }
 
 ::-moz-selection {
@@ -63,6 +80,7 @@ a {
   color: #ffffff; }
 
 .text-primary {
+<<<<<<< HEAD
   color: #7B5CFF !important; }
 
 a.text-primary {
@@ -73,6 +91,18 @@ a.text-primary {
 h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
   font-family: "Display Playfair", serif;
   color: #black; }
+=======
+  color: #136ad5 !important; }
+
+a.text-primary {
+  color: #136ad5 !important; }
+  a.text-primary:hover {
+    color: #136ad5 !important; }
+
+h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
+  font-family: "Display Playfair", serif;
+  color: black; }
+>>>>>>> origin/ketchemen-joryn-elvin
 
 .btn {
   padding-top: 15px;
@@ -89,6 +119,7 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
     -webkit-box-shadow: none;
     box-shadow: none; }
   .btn.btn-primary {
+<<<<<<< HEAD
     background: #7B5CFF;
     border-color: #7B5CFF; }
     .btn.btn-primary:hover {
@@ -100,16 +131,36 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
     .btn.btn-secondary:hover {
       border-color: #a890ff;
       background: #a890ff; }
+=======
+    background: #136ad5;
+    border-color: #136ad5; }
+    .btn.btn-primary:hover {
+      border-color: #1573e8;
+      background: #1573e8; }
+  .btn.btn-secondary {
+    background: #00aeff;
+    border-color: #00aeff; }
+    .btn.btn-secondary:hover {
+      border-color: #14b4ff;
+      background: #14b4ff; }
+>>>>>>> origin/ketchemen-joryn-elvin
   .btn.btn-sm {
     padding-top: 10px;
     padding-bottom: 10px;
     padding-left: 15px;
     padding-right: 15px; }
   .btn.btn-outline-primary {
+<<<<<<< HEAD
     border-color: #7B5CFF;
     color: #7B5CFF; }
     .btn.btn-outline-primary:hover {
       background: #7B5CFF;
+=======
+    border-color: #136ad5;
+    color: #136ad5; }
+    .btn.btn-outline-primary:hover {
+      background: #136ad5;
+>>>>>>> origin/ketchemen-joryn-elvin
       color: #ffffff; }
 
 .form-control, .custom-select {
@@ -122,7 +173,11 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
   color: #000000; }
   .form-control:active, .form-control:focus, .custom-select:active, .custom-select:focus {
     color: #000000;
+<<<<<<< HEAD
     border-color: #7B5CFF;
+=======
+    border-color: #136ad5;
+>>>>>>> origin/ketchemen-joryn-elvin
     -webkit-box-shadow: none;
     box-shadow: none;
     background: transparent; }
@@ -191,7 +246,11 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
         padding-left: 15px; } }
 
 .spinner-border {
+<<<<<<< HEAD
   color: #7B5CFF; }
+=======
+  color: #136ad5; }
+>>>>>>> origin/ketchemen-joryn-elvin
 
 /*PRELOADING------------ */
 #overlayer {
@@ -694,7 +753,11 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
       left: 0;
       right: 0;
       bottom: 0;
+<<<<<<< HEAD
       background: rgba(123, 92, 255, 0.85);
+=======
+      background: rgba(19, 106, 213, 0.85);
+>>>>>>> origin/ketchemen-joryn-elvin
       z-index: -0; }
   .untree_co-hero > .container, .bg-img > .container {
     position: relative;
@@ -798,7 +861,11 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
   .block-v1.color-2 {
     background-color: #ec661f; }
   .block-v1.color-3 {
+<<<<<<< HEAD
     background-color: #A99BFF; }
+=======
+    background-color: #4fb0dc; }
+>>>>>>> origin/ketchemen-joryn-elvin
 
 .feature {
   margin-bottom: 40px;
@@ -813,7 +880,11 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
     position: relative;
     margin-bottom: 30px;
     font-size: 30px;
+<<<<<<< HEAD
     color: #7B5CFF;
+=======
+    color: #136ad5;
+>>>>>>> origin/ketchemen-joryn-elvin
     width: 50px;
     height: 50px;
     line-height: 50px;
@@ -852,12 +923,21 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
     .feature [class^="flaticon-"].color-3,
     .feature [class^="icon-"].color-3,
     .feature [class^="uil uil-"].color-3 {
+<<<<<<< HEAD
       background: rgba(169, 155, 255, 0.1);
       color: #A99BFF; }
       .feature [class^="flaticon-"].color-3:after,
       .feature [class^="icon-"].color-3:after,
       .feature [class^="uil uil-"].color-3:after {
         border: 1px solid rgba(169, 155, 255, 0.2); }
+=======
+      background: rgba(79, 176, 220, 0.1);
+      color: #4fb0dc; }
+      .feature [class^="flaticon-"].color-3:after,
+      .feature [class^="icon-"].color-3:after,
+      .feature [class^="uil uil-"].color-3:after {
+        border: 1px solid rgba(79, 176, 220, 0.2); }
+>>>>>>> origin/ketchemen-joryn-elvin
     .feature [class^="flaticon-"].color-4,
     .feature [class^="icon-"].color-4,
     .feature [class^="uil uil-"].color-4 {
@@ -900,7 +980,11 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
   right: -100%;
   top: -40px;
   z-index: -1;
+<<<<<<< HEAD
   background: rgba(123, 92, 255, 0.2); }
+=======
+  background: rgba(19, 106, 213, 0.2); }
+>>>>>>> origin/ketchemen-joryn-elvin
 
 .bg-2:before {
   content: "";
@@ -919,7 +1003,11 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
 .line-bottom {
   position: relative;
   padding-bottom: 0px;
+<<<<<<< HEAD
   color: #7B5CFF; }
+=======
+  color: #136ad5; }
+>>>>>>> origin/ketchemen-joryn-elvin
   .line-bottom:before {
     display: none;
     content: "";
@@ -1389,7 +1477,11 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
   background: #ccc; }
 
 .control input:checked ~ .control__indicator {
+<<<<<<< HEAD
   background: #7B5CFF; }
+=======
+  background: #136ad5; }
+>>>>>>> origin/ketchemen-joryn-elvin
 
 .control:hover input:not([disabled]):checked ~ .control__indicator,
 .control input:checked:focus ~ .control__indicator {
@@ -1425,7 +1517,11 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
   border-color: #7b7b7b; }
 
 .control--checkbox input:disabled:checked ~ .control__indicator {
+<<<<<<< HEAD
   background-color: #7B5CFF;
+=======
+  background-color: #136ad5;
+>>>>>>> origin/ketchemen-joryn-elvin
   opacity: .2; }
 
 .gal-item {
@@ -1605,12 +1701,19 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
   margin-bottom: 30px; }
 
 .site-footer {
+<<<<<<< HEAD
   /* Footer changed to a light violet */
   background: #BFA8FF;
   font-size: 14px;
   color: #ffffff;
   padding: 70px 0;
   transition: background .25s ease; }
+=======
+  background: #136ad5;
+  font-size: 14px;
+  color: #ffffff;
+  padding: 70px 0; }
+>>>>>>> origin/ketchemen-joryn-elvin
   .site-footer a {
     color: #ffffff;
     position: relative;
@@ -1637,6 +1740,7 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
   .site-footer .social li {
     display: inline-block; }
     .site-footer .social li a {
+<<<<<<< HEAD
         display: inline-block;
         width: 30px;
         height: 30px;
@@ -1687,3 +1791,26 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
 /* small responsive adjustments */
 @media (max-width:767.98px){ .ff-stage{ height:640px } .ff-card, .ff-svg{ width:90% } .ff-card{ padding:20px } }
 
+=======
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      position: relative;
+      background-color: #ffffff;
+      border-radius: 50%;
+      color: #000000; }
+      .site-footer .social li a:before {
+        display: none; }
+      .site-footer .social li a > span {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        -ms-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%); }
+      .site-footer .social li a:hover {
+        background: #2f84ec;
+        color: #ffffff; }
+  .site-footer .copyright {
+    color: rgba(255, 255, 255, 0.5); }
+>>>>>>> origin/ketchemen-joryn-elvin

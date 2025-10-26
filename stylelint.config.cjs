@@ -1,7 +1,6 @@
 module.exports = {
   extends: "stylelint-config-standard",
   rules: {
-      "no-unused-vars": "off",
     // Désactiver certaines règles globalement
     "declaration-block-no-duplicate-properties": null,
     "no-duplicate-selectors": null,

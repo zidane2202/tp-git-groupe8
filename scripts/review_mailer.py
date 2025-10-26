@@ -10,12 +10,11 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 SMTP_PASS = os.environ.get("SMTP_PASS")
 SMTP_USER = os.environ.get("SMTP_USER")
 
-if len(sys.argv) < 3:
-    print("Erreur: L'email du destinataire et la liste des fichiers modifiés sont requis.")
+if len(sys.argv) < 2:
+    print("Erreur: L'email du destinataire est requis.")
     sys.exit(1)
 
 RECIPIENT_EMAIL = sys.argv[1]
-CHANGED_FILES = sys.argv[2].split()
 
 # --- Fonctions d'aide ---
 
@@ -28,20 +27,26 @@ def get_file_content(file_path):
     except Exception as e:
         return f"--- Impossible de lire le fichier: {file_path} (Erreur: {e}) ---\n"
 
-def generate_prompt(changed_files):
-    """Génère le prompt pour l'IA avec le contenu des fichiers."""
+def gather_project_files():
+    """Récupère tous les fichiers pertinents du projet."""
+    files = []
+    for root, dirs, filenames in os.walk("."):
+        # Ignorer certains dossiers
+        dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'venv']]
+        for file in filenames:
+            if file.endswith(('.py', '.js', '.html', '.css', '.md')):  # Extensions pertinentes
+                files.append(os.path.join(root, file))
+    return files
+
+def generate_prompt(all_files):
+    """Génère le prompt pour l'IA avec le contenu de tous les fichiers."""
     prompt = (
-        "Vous êtes un expert en revue de code. Analysez les changements suivants, "
+        "Vous êtes un expert en revue de code. Analysez l'ensemble du projet, "
         "concentrez-vous sur la qualité, cohérence, erreurs potentielles et améliorations. "
-        "Générez une réponse **HTML complète et esthétique** pour un email. "
-        "Si le code est impeccable, le mail doit féliciter le développeur. "
-        "Si des erreurs ou suggestions existent, indiquez-les clairement, avec corrections si possible.\n\n"
-        "--- Fichiers Modifiés ---\n"
+        "Générez une réponse **HTML complète et esthétique** pour un email.\n\n"
     )
     
-    for file in changed_files:
-        if file.startswith('.github/') or file.endswith(('.png', '.jpg', '.gif', '.bin')):
-            continue
+    for file in all_files:
         prompt += get_file_content(file)
     return prompt
 
@@ -82,11 +87,13 @@ def send_email(recipient, subject, html_body):
         print("\n----------------------------------------------------\n")
 
 # --- Logique principale ---
-print(f"Début de l'analyse pour le push de: {RECIPIENT_EMAIL}")
-print(f"Fichiers modifiés: {', '.join(CHANGED_FILES)}")
+print(f"Début de l'analyse complète du projet pour: {RECIPIENT_EMAIL}")
+
+all_files = gather_project_files()
+print(f"Fichiers trouvés pour analyse: {len(all_files)}")
 
 # 1. Générer le prompt
-review_prompt = generate_prompt(CHANGED_FILES)
+review_prompt = generate_prompt(all_files)
 
 # 2. Obtenir la revue IA
 html_review = get_ai_review(review_prompt)

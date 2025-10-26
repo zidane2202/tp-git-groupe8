@@ -23,7 +23,7 @@ import { execSync } from "child_process";
   }
 
   // --- 3️⃣ Génération du mail via Gemini (Google GenAI) ---
-  const ai = new GoogleGenAI({});
+  const ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
   async function generateMail(diffText) {
     const prompt = `

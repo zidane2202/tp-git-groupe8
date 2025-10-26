@@ -1,6 +1,7 @@
 module.exports = {
   extends: "stylelint-config-standard",
   rules: {
+    "property-no-vendor-prefix": null,  // Allow vendor prefixes
     // Désactiver certaines règles globalement
     "declaration-block-no-duplicate-properties": null,
     "no-duplicate-selectors": null,

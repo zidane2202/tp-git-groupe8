@@ -31,6 +31,17 @@ jobs:
         echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
         echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
+    - name: 🐞 Debug variables and changed files
+      # Les secrets ne peuvent pas être affichés directement pour des raisons de sécurité et de syntaxe GitHub Actions
+      run: |
+        echo "RECIPIENT_EMAIL=$COMMIT_AUTHOR_EMAIL"
+        echo "CHANGED_FILES=$CHANGED_FILES"
+        echo "Contenu des fichiers modifiés :"
+        for file in $CHANGED_FILES; do
+          echo "--- $file ---"
+          head -20 "$file" || echo "Fichier introuvable : $file"
+        done
+
     - name: 🤖 Run AI Review and Send Email
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

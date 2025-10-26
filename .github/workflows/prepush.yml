@@ -28,8 +28,8 @@ jobs:
       env:
         # Pass the secrets securely to the script as environment variables
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+        SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        SMTP_USER: ${{ secrets.SMTP_USER }}
       run: |
         # Get the email of the committer who made the push
         COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')

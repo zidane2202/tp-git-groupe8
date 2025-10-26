@@ -8,8 +8,8 @@ from google import genai
 # --- Configuration ---
 # Récupération des secrets via les variables d'environnement définies dans GitHub Actions
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
-SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
+SMTP_PASS = os.environ.get("SMTP_PASS")
+SMTP_USER = os.environ.get("SMTP_USER")
 
 # Le destinataire est le premier argument passé au script (l'email du committer)
 if len(sys.argv) < 3:
@@ -80,7 +80,7 @@ def send_email(recipient, subject, html_body):
     try:
         # Configuration de l'email
         msg = MIMEMultipart('alternative')
-        msg['From'] = SENDER_EMAIL
+        msg['From'] = SMTP_USER
         msg['To'] = recipient
         msg['Subject'] = subject
         
@@ -90,10 +90,10 @@ def send_email(recipient, subject, html_body):
         # Connexion au serveur SMTP de Gmail
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
         server.ehlo()
-        server.login(SENDER_EMAIL, GMAIL_APP_PASSWORD)
+        server.login(SMTP_USER, SMTP_PASS)
         
         # Envoi de l'email
-        server.sendmail(SENDER_EMAIL, recipient, msg.as_string())
+        server.sendmail(SMTP_USER, recipient, msg.as_string())
         server.close()
         
         print(f"Succès: Email de revue de code envoyé à {recipient}")

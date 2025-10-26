@@ -21,13 +21,17 @@ jobs:
       - name: 📦 Install dependencies
         run: pip install google-genai
 
-      - name: 🔍 Get committer email and changed files
+      - name: 🔍 Get committer email and changes
         id: changes
         run: |
           COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          FULL_DIFF=$(git diff HEAD^ HEAD)
           echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+          echo "FULL_DIFF<<EOF" >> $GITHUB_ENV
+          echo "$FULL_DIFF" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: 🤖 Run AI Review and Send Email
         env:

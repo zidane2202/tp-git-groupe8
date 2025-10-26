@@ -1,36 +1,40 @@
 name: AI Code Review & Mailer
 
-on: [push]  # Se déclenche à chaque push
+on:
+  push:        # triggers on every push (all branches)
 
 jobs:
   ai-review:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout du code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
-
-      - name: 🐍 Installer Python
-        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          fetch-depth: 2  # required to compare last commit
 
-      - name: 📦 Installer la bibliothèque Gemini
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
         run: pip install google-genai
 
-      - name: 🔍 Récupérer la liste des fichiers modifiés
+      - name: 🔍 Get committer email and changed files
         id: changes
         run: |
-          git fetch origin main || true
-          git diff --name-only HEAD~1 HEAD > changed_files.txt
-          echo "changed_files=$(cat changed_files.txt | tr '\n' ' ')" >> $GITHUB_ENV
+          COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
-      - name: 🤖 Analyse IA et envoi de mail
+      - name: 🤖 Run AI Review and Send Email
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          RECIPIENT_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
+          CHANGED_FILES: ${{ env.CHANGED_FILES }}
         run: |
-          python scripts/review_mailer.py \
-            "ton.email@exemple.com" \
-            "${{ env.changed_files }}"
+          python scripts/review_mailer.py "$RECIPIENT_EMAIL" "$CHANGED_FILES"

@@ -7,8 +7,8 @@ from google import genai
 
 # --- Configuration ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-SMTP_PASS = os.environ.get("SMTP_PASS")
 SMTP_USER = os.environ.get("SMTP_USER")
+SMTP_PASS = os.environ.get("SMTP_PASS")
 
 if len(sys.argv) < 3:
     print("Erreur: L'email du destinataire et la liste des fichiers modifiés sont requis.")
@@ -18,7 +18,6 @@ RECIPIENT_EMAIL = sys.argv[1]
 CHANGED_FILES = sys.argv[2].split()
 
 # --- Fonctions d'aide ---
-
 def get_file_content(file_path):
     """Lit le contenu d'un fichier (jusqu'à 100 lignes)."""
     try:
@@ -30,44 +29,18 @@ def get_file_content(file_path):
 
 def generate_prompt(changed_files):
     """Génère le prompt pour l'IA avec le contenu des fichiers."""
-    prompt = """
-    Vous êtes un expert senior en revue de code. Analysez les fichiers modifiés fournis ci-dessous.
-    
-    Instructions spécifiques:
-    1. Examinez le code pour:
-       - Bugs et erreurs potentiels
-       - Problèmes de sécurité
-       - Performances
-       - Lisibilité et maintenabilité
-       - Cohérence avec les bonnes pratiques
-    
-    2. Format de réponse (HTML):
-       <h1>📊 Revue de Code - [Succès/Attention]</h1>
-       
-       <h2>🎯 Résumé</h2>
-       [Vue d'ensemble concise des changements]
-       
-       <h2>🔍 Analyse par Fichier</h2>
-       [Pour chaque fichier modifié]
-       
-       <h2>⚠️ Problèmes Détectés</h2>
-       [Si applicable, sinon section omise]
-       
-       <h2>💡 Suggestions d'Amélioration</h2>
-       [Recommandations concrètes]
-    
-    Ne générez pas d'exemple - analysez uniquement le code fourni.
-    Soyez précis dans vos retours avec les numéros de ligne.
-    
-    --- Fichiers Modifiés ---
-    """
-    
+    prompt = (
+        "Vous êtes un expert en revue de code. Analysez les changements suivants, "
+        "concentrez-vous sur la qualité, cohérence, erreurs potentielles et améliorations. "
+        "Générez une réponse **HTML complète et esthétique** pour un email. "
+        "Si le code est impeccable, le mail doit féliciter le développeur. "
+        "Si des erreurs ou suggestions existent, indiquez-les clairement, avec corrections si possible.\n\n"
+        "--- Fichiers Modifiés ---\n"
+    )
     for file in changed_files:
         if file.startswith('.github/') or file.endswith(('.png', '.jpg', '.gif', '.bin')):
             continue
-        prompt += f"\n\n=== {file} ===\n"
         prompt += get_file_content(file)
-    
     return prompt
 
 def get_ai_review(prompt):
@@ -79,8 +52,8 @@ def get_ai_review(prompt):
             contents=prompt
         )
         html_content = response.text.strip()
-        if html_content.startswith("```html"):
-            html_content = html_content.strip("```html").strip("```").strip()
+        if html_content.startswith("<html>"):
+            html_content = html_content.strip("<html>").strip("</html>").strip()
         return html_content
     except Exception as e:
         return f"<h1>Erreur d'API Gemini</h1><p>Impossible d'obtenir la revue de code. Erreur: {e}</p>"
@@ -116,34 +89,15 @@ review_prompt = generate_prompt(CHANGED_FILES)
 # 2. Obtenir la revue IA
 html_review = get_ai_review(review_prompt)
 
-# 3. Détecter les erreurs et leur gravité dans le code
-def analyze_review(html_content):
-    error_patterns = {
-        'critical': ['erreur critique', 'bug majeur', 'faille de sécurité', 'crash'],
-        'warning': ['warning', 'attention', 'à améliorer', 'pourrait causer'],
-        'info': ['suggestion', 'amélioration possible', 'considérer']
-    }
-    
-    found_issues = {'critical': [], 'warning': [], 'info': []}
-    content_lower = html_content.lower()
-    
-    for level, patterns in error_patterns.items():
-        for pattern in patterns:
-            if pattern in content_lower:
-                found_issues[level].append(pattern)
-    
-    return found_issues
-
-issues = analyze_review(html_review)
-errors_detected = bool(issues['critical'] or issues['warning'])
+# 3. Détecter les erreurs dans le code
+errors_detected = any(keyword in html_review.lower() for keyword in ["erreur", "bug", "warning", "fail"])
 
 # 4. Déterminer le sujet de l'email
-if issues['critical']:
-    email_subject = "🚨 Revue de Code - Erreurs Critiques Détectées"
-elif issues['warning']:
-    email_subject = "⚠️ Revue de Code - Avertissements à Corriger"
-else:
-    email_subject = "✅ Revue de Code - Code Validé"
+email_subject = (
+    "⚠️ Revue de Code Automatisée - Erreurs détectées"
+    if errors_detected else
+    "✅ Revue de Code Automatisée - Code validé"
+)
 
 # 5. Envoyer l'email
 send_email(RECIPIENT_EMAIL, email_subject, html_review)

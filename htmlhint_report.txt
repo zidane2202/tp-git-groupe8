@@ -23,4 +23,4 @@
 [37m      L15 |[90m<BODY onload="eval(document.URL.split('?')[1])"> <!-- Failles XSS via eval() sur URL, très dangereux ...[39m
 [37m           ^ [31mTag must be paired, missing: [ </body> ], start tag match failed [ <BODY onload="eval(document.URL.split('?')[1])"> ] on line 15. (tag-pair)[39m
 
-Scanned 16 files, found 11 errors in 1 files (258 ms)
+Scanned 16 files, found 11 errors in 1 files (266 ms)

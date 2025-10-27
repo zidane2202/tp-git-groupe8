@@ -1,106 +1,78 @@
 import 'dotenv/config';
 import nodemailer from "nodemailer";
 import fs from "fs";
-import path from "path";
+import { execSync } from "child_process";
 
-// --- 1️⃣ Configuration ---
-const REPORT_FILE = path.join(process.cwd(), "ai_report.txt");
-const DEFAULT_SUBJECT = "Revue de Code Automatisée";
-
-// --- 2️⃣ Fonctions d'aide ---
-
-/**
- * Lit le rapport de l'IA, extrait le sujet et le corps HTML.
- * @returns {{subject: string, htmlBody: string}} Le sujet et le corps HTML de l'e-mail.
- */
-const parseAiReport = () => {
-    try {
-        const reportContent = fs.readFileSync(REPORT_FILE, "utf8");
-        
-        // Le sujet est la première ligne commençant par "Sujet : "
-        const subjectMatch = reportContent.match(/^Sujet\s*:\s*(.+)/im);
-        let subject = subjectMatch ? subjectMatch[1].trim() : DEFAULT_SUBJECT;
-
-        // Le corps HTML est le reste du contenu après le sujet (ou tout le contenu si pas de sujet)
-        let htmlBody = reportContent;
-        if (subjectMatch) {
-            // Supprimer la ligne du sujet du corps du message
-            htmlBody = reportContent.replace(subjectMatch[0], "").trim();
-        }
-
-        // Si le corps HTML n'est pas un document HTML complet, l'envelopper pour assurer le formatage
-        if (!htmlBody.match(/<html/i)) {
-            htmlBody = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${subject}</title>
-</head>
-<body>
-    ${htmlBody}
-</body>
-</html>`;
-        }
-
-        return { subject, htmlBody };
-
-    } catch (err) {
-        console.error("❌ Erreur lecture ou parsing du rapport IA :", err);
-        return { 
-            subject: `Erreur: ${DEFAULT_SUBJECT}`, 
-            htmlBody: `<h1>Erreur de Génération de Rapport</h1><p>Impossible de lire le rapport de l'IA (${REPORT_FILE}).</p><p>Détails: ${err.message}</p>`
-        };
-    }
-}
-
-// --- 3️⃣ Logique principale ---
+// Nom du fichier contenant le corps HTML de l'email généré par analyseAI.js
+const REPORT_FILE = "ai_report.html";
+const DEFAULT_SUBJECT = "Revue de Code Automatisée - Push sur ai-projet-git";
 
 (async () => {
-  
-  // --- A. Récupération des adresses e-mails ---
-  // On utilise l'adresse de l'utilisateur SMTP comme expéditeur par défaut
-  const senderEmail = process.env.SMTP_USER;
-  
-  // Le destinataire est le premier argument passé au script
-  const toEmails = process.argv[2] || process.env.NOTIFY_EMAILS;
-
-  if (!toEmails) {
-      console.error("Erreur: Adresse e-mail du destinataire non spécifiée.");
-      process.exit(1);
+  // --- 1️⃣ Récupération des adresses e-mails ---
+  let toEmails;
+  // On utilise NOTIFY_EMAILS s'il est défini, sinon on essaie de récupérer l'email Git
+  if (process.env.NOTIFY_EMAILS) {
+    toEmails = process.env.NOTIFY_EMAILS;
+  } else {
+    try {
+      // Tente de récupérer l'email de l'utilisateur Git
+      toEmails = execSync("git config user.email").toString().trim();
+      console.log("📧 Adresse Git détectée :", toEmails);
+    } catch {
+      // Adresse par défaut si l'email Git n'est pas trouvé
+      toEmails = "pythiemorne22@gmail.com"; 
+      console.log("⚠️ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
+    }
   }
 
-  // --- B. Lecture et préparation du contenu ---
-  const { subject, htmlBody } = parseAiReport();
+  // --- 2️⃣ Lecture du rapport HTML généré par l'IA ---
+  let htmlBody;
+  try {
+    htmlBody = fs.readFileSync(REPORT_FILE, "utf8");
+    console.log(`✅ Rapport HTML lu depuis ${REPORT_FILE}`);
+  } catch (err) {
+    console.error(`❌ Erreur: Impossible de lire le fichier de rapport ${REPORT_FILE}.`, err);
+    // Corps de l'email d'erreur si le fichier n'est pas trouvé
+    htmlBody = `
+      <html><body>
+        <h1 style="color: red;">Erreur Critique: Rapport IA Manquant</h1>
+        <p>Le script d'analyse IA n'a pas pu générer le fichier de rapport attendu (${REPORT_FILE}).</p>
+        <p>Veuillez vérifier l'exécution de la phase d'analyse.</p>
+      </body></html>
+    `;
+  }
   
-  // --- C. Configuration du transporteur SMTP ---
+  // --- 3️⃣ Détermination du sujet de l'email ---
+  // On pourrait analyser le contenu HTML pour un sujet plus précis,
+  // mais pour rester fidèle à l'exemple Python, on utilise un sujet statique.
+  const subject = DEFAULT_SUBJECT;
+
+  // --- 4️⃣ Configuration du transporteur SMTP ---
+  // Utilisation des variables d'environnement pour la configuration SMTP (comme dans l'exemple original)
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-    secure: process.env.SMTP_SECURE === "true" || (process.env.SMTP_PORT === "465"), // Utiliser SSL/TLS pour le port 465
+    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465, // 465 pour SSL/TLS (comme le Python)
+    secure: process.env.SMTP_PORT ? process.env.SMTP_SECURE === "true" : true, // true pour 465
     auth: {
-      user: senderEmail,
+      user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
   });
 
-  // --- D. Préparation et envoi du mail ---
+  // --- 5️⃣ Préparation et envoi du mail ---
   const mailOptions = {
-    from: `Git AI Bot <${senderEmail}>`,
+    from: `Git AI Bot <${process.env.SMTP_USER || toEmails}>`,
     to: toEmails,
-    subject,
-    html: htmlBody, // Utilisation de 'html' au lieu de 'text'
+    subject: subject,
+    html: htmlBody, // On envoie le corps en HTML
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Mail envoyé à ${toEmails} avec le sujet: ${subject}`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log("📧 Mail envoyé à", toEmails);
+    console.log("Message ID:", info.messageId);
   } catch (err) {
-    console.error("❌ Erreur envoi mail :", err);
-    console.log("\n--- Contenu HTML non envoyé (pour débogage) ---\n");
-    console.log(htmlBody);
-    console.log("\n----------------------------------------------------\n");
-    process.exit(1);
+    console.error("❌ Erreur envoi mail. Vérifiez les variables SMTP_USER et SMTP_PASS (mot de passe d'application Gmail).", err);
   }
   
 })();

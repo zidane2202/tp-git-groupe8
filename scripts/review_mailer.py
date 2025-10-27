@@ -1,10 +1,9 @@
 import os
 import sys
-import subprocess
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from bs4 import BeautifulSoup
+from html.parser import HTMLParser
 from google import genai
 
 # --- Configuration ---
@@ -12,89 +11,100 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
 
-if len(sys.argv) < 2:
-    print("Erreur: L'email du destinataire est requis.")
+if len(sys.argv) < 3:
+    print("Erreur: L'email du destinataire et la liste des fichiers modifiés sont requis.")
     sys.exit(1)
 
 RECIPIENT_EMAIL = sys.argv[1]
+CHANGED_FILES = sys.argv[2].split()
 
-# --- Fonctions Git ---
-def get_all_tracked_files():
-    """Retourne tous les fichiers suivis par Git."""
-    result = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
-    return result.stdout.splitlines()
+# --- HTML Validator ---
+class HTMLValidator(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.errors = []
+        self.open_tags = []
 
-def filter_code_files(files):
-    """Filtre les fichiers pertinents pour la revue de code."""
-    return [
-        f for f in files
-        if not f.startswith('.github/') and not f.endswith(('.png', '.jpg', '.gif', '.bin'))
-    ]
+    def handle_starttag(self, tag, attrs):
+        for attr, value in attrs:
+            if value is None:
+                self.errors.append(f"Attribut '{attr}' sans valeur dans <{tag}> à la ligne {self.getpos()[0]}")
+        self.open_tags.append((tag, self.getpos()[0]))
 
-# --- Fonctions pour le contenu des fichiers ---
+    def handle_endtag(self, tag):
+        if not self.open_tags:
+            self.errors.append(f"Balise fermante </{tag}> sans balise ouvrante correspondante à la ligne {self.getpos()[0]}")
+        else:
+            last_tag, line = self.open_tags.pop()
+            if last_tag != tag:
+                self.errors.append(f"Balise fermante </{tag}> ne correspond pas à <{last_tag}> ouverte à la ligne {line}")
+
+    def close(self):
+        super().close()
+        for tag, line in self.open_tags:
+            self.errors.append(f"Balise <{tag}> ouverte à la ligne {line} non fermée")
+
+# --- Fonctions d'aide ---
 def get_file_content(file_path):
-    """Lit le contenu d'un fichier (limité aux 100 premières lignes)."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            content = "".join(f.readlines()[:100])
-        return f"--- Contenu du fichier: {file_path} ---\n{content}\n"
+            content = "".join(f.readlines())
+        return content
     except Exception as e:
         return f"--- Impossible de lire le fichier: {file_path} (Erreur: {e}) ---\n"
 
-def get_all_files_content(files):
-    content = ""
+def validate_html_files(files):
+    errors = []
     for file in files:
-        content += get_file_content(file)
-    return content
+        if file.endswith(".html"):
+            validator = HTMLValidator()
+            content = get_file_content(file)
+            validator.feed(content)
+            validator.close()
+            for err in validator.errors:
+                errors.append(f"{file}: {err}")
+    return errors
 
-# --- Fonctions IA ---
-def generate_prompt(files_content):
-    """Génère le prompt pour l'IA avec instructions HTML dynamiques."""
-    prompt = f"""
-Vous êtes un expert en revue de code. Analysez TOUS les fichiers du dépôt et générez un email complet en HTML pour le développeur.
-Incluez :
-- Erreurs détectées (en rouge)
-- Suggestions d'amélioration (titre bleu, texte gris foncé)
-- Sections claires séparées par <hr>
-- Boîte centrale blanche, bord arrondi, ombre douce
-- Police Arial ou sans-serif
-- Fond général gris clair (#f4f4f9)
-- CSS en ligne uniquement
-- HTML complet (<html>, <body>, etc.)
-- Si aucun problème, félicitez le développeur et proposez des améliorations optionnelles
+def generate_email_html(errors, changed_files):
+    # Déterminer style et titre
+    if errors:
+        title = "⚠️ Revue de Code - Erreurs détectées"
+        color = "#e74c3c"  # rouge
+        error_section = "<ul>" + "".join(f"<li>{err}</li>" for err in errors) + "</ul>"
+    else:
+        title = "✅ Revue de Code - Code validé"
+        color = "#27ae60"  # vert
+        error_section = "<p>Aucune erreur critique détectée. Bravo !</p>"
 
-Contenu à analyser :
-{files_content}
+    # Suggestions génériques (toujours affichées)
+    suggestions = """
+    <p style="color:#333;">Suggestions IA :</p>
+    <ul style="color:#333;">
+        <li>Ajouter des docstrings pour toutes les fonctions.</li>
+        <li>Utiliser des noms de variables explicites.</li>
+        <li>Vérifier les bonnes pratiques CSS et HTML.</li>
+    </ul>
+    """
 
-IMPORTANT : Ne générez aucun Markdown. Tout doit être en HTML complet avec styles en ligne.
+    html = f"""
+<html>
+  <body style="background-color:#f4f4f9; font-family:Arial, sans-serif; margin:0; padding:0;">
+    <div style="max-width:600px; margin:20px auto; background-color:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); padding:20px;">
+      <h2 style="color:{color}; text-align:center;">{title}</h2>
+      <hr>
+      <p>Fichiers analysés : {', '.join(changed_files)}</p>
+      <h3 style="color:#2980b9;">Erreurs détectées :</h3>
+      {error_section}
+      <hr>
+      {suggestions}
+      <hr>
+      <p style="font-size:12px; color:#888;">Ceci est un email automatique généré par le système de revue de code.</p>
+    </div>
+  </body>
+</html>
 """
-    return prompt
+    return html
 
-def get_ai_review(prompt):
-    """Appelle l'API Gemini pour obtenir le mail HTML."""
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt
-        )
-        html_content = response.text.strip()
-        if html_content.startswith("```html"):
-            html_content = html_content.strip("```html").strip("```").strip()
-        return html_content
-    except Exception as e:
-        return f"<h1>Erreur d'API Gemini</h1><p>Impossible d'obtenir la revue de code. Erreur: {e}</p>"
-
-# --- Vérification des erreurs HTML ---
-def detect_html_errors(html):
-    """Retourne True si le HTML contient des erreurs (balises non fermées, etc.)."""
-    try:
-        BeautifulSoup(html, "html.parser")
-        return False  # Pas d'erreur détectée
-    except Exception:
-        return True
-
-# --- Envoi d'email ---
 def send_email(recipient, subject, html_body):
     try:
         msg = MIMEMultipart('alternative')
@@ -107,33 +117,17 @@ def send_email(recipient, subject, html_body):
         server.login(SENDER_EMAIL, GMAIL_APP_PASSWORD)
         server.sendmail(SENDER_EMAIL, recipient, msg.as_string())
         server.close()
-        print(f"Succès: Email de revue de code envoyé à {recipient}")
+        print(f"Succès: Email envoyé à {recipient}")
     except Exception as e:
         print(f"Erreur: Échec de l'envoi de l'email à {recipient}. Erreur: {e}")
-        print("\n--- Contenu HTML non envoyé ---\n")
         print(html_body)
-        print("\n-------------------------------\n")
 
 # --- Logique principale ---
-all_files = get_all_tracked_files()
-code_files = filter_code_files(all_files)
-files_content = get_all_files_content(code_files)
-prompt = generate_prompt(files_content)
-html_review = get_ai_review(prompt)
+all_errors = validate_html_files(CHANGED_FILES)
+email_html = generate_email_html(all_errors, CHANGED_FILES)
+mail_subject = "⚠️ Revue de Code - Erreurs détectées" if all_errors else "✅ Revue de Code - Code validé"
 
-# Détection d'erreurs HTML
-has_errors = detect_html_errors(html_review)
+send_email(RECIPIENT_EMAIL, mail_subject, email_html)
 
-# Déterminer sujet et exit code
-if has_errors:
-    mail_subject = "⚠️ Revue de Code - Erreurs détectées"
-    exit_code = 1
-else:
-    mail_subject = "✅ Revue de Code - Code Validé"
-    exit_code = 0
-
-# Envoi du mail (toujours)
-send_email(RECIPIENT_EMAIL, mail_subject, html_review)
-
-# Faire échouer le push si des erreurs
-sys.exit(exit_code)
+# Faire échouer le push si erreurs
+sys.exit(1 if all_errors else 0)

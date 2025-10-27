@@ -5,7 +5,10 @@
   "description": "Travail pratique Github en groupe",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "analyse": "node analyseAI.js",
+    "send-mail": "node sendMail.js",
+    "lint": "eslint . && htmlhint . && stylelint '**/*.css'",
+    "test": "npm run lint"
   },
   "repository": {
     "type": "git",
@@ -27,11 +30,8 @@
     "stylelint-config-standard": "^39.0.1"
   },
   "dependencies": {
-    "@google/genai": "^1.27.0",
     "@google/generative-ai": "^0.24.1",
-    "dotenv": "^17.2.3",
-    "gemini-ai": "^2.2.1",
-    "nodemailer": "^7.0.10",
-    "openai": "^6.7.0"
+    "dotenv": "^16.4.5",
+    "nodemailer": "^7.0.10"
   }
 }

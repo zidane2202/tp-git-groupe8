@@ -1,105 +1,177 @@
 import 'dotenv/config';
-import nodemailer from "nodemailer";
-import { GoogleGenAI } from "@google/genai";
-import { execSync } from "child_process";
+import nodemailer from 'nodemailer';
+import { GoogleGenAI } from '@google/genai';
+import { execSync } from 'child_process';
 
-// Version corrigée : tout est exécuté dans une IIFE async pour permettre l'utilisation d'`await` en toute sécurité.
-(async () => {
-  // --- 1️⃣ Récupération de l'état du push ---
-  const status = process.argv[2] || "success";
+// --- Configuration ---
+const SMTP_CONFIG = {
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+};
 
-  // --- 2️⃣ Récupération des adresses e-mails ---
-  let toEmails;
+const DEFAULT_EMAIL = 'pythiemorne22@gmail.com';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+// --- Fonctions d'aide ---
+/**
+ * Récupère l'adresse e-mail du committer ou utilise une valeur par défaut.
+ * @returns {string} Adresse e-mail
+ */
+function getRecipientEmail() {
   if (process.env.NOTIFY_EMAILS) {
-    toEmails = process.env.NOTIFY_EMAILS;
-  } else {
-    try {
-      toEmails = execSync("git config user.email").toString().trim();
-      console.log("📧 Adresse Git détectée :", toEmails);
-    } catch {
-      toEmails = "pythiemorne22@gmail.com"; // adresse par défaut fournie
-      console.log("⚠️ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
-    }
+    return process.env.NOTIFY_EMAILS;
   }
+  try {
+    const email = execSync('git config user.email').toString().trim();
+    console.log('📧 Adresse Git détectée :', email);
+    return email;
+  } catch (error) {
+    console.log('⚠️ Impossible de récupérer l’e-mail Git, utilisation de l’e-mail par défaut :', DEFAULT_EMAIL);
+    return DEFAULT_EMAIL;
+  }
+}
 
-  // --- 3️⃣ Génération du mail via Gemini (Google GenAI) ---
-  const ai = new GoogleGenAI({});
+/**
+ * Récupère le diff Git des fichiers modifiés.
+ * @returns {string} Contenu du diff ou message par défaut
+ */
+function getGitDiff() {
+  try {
+    return execSync('git diff --cached').toString();
+  } catch (error) {
+    console.log('⚠️ Impossible de récupérer le diff Git :', error.message);
+    return 'Aucun diff disponible.';
+  }
+}
 
-  async function generateMail(diffText) {
-    const prompt = `
-Tu es un assistant expert en développement. Génère un mail professionnel basé sur le diff suivant :
-1) Résultats des linters et autres outils d'analyse statique
-2) Diff Git des fichiers modifiés
-3) Recommandations, remarques et suggestions d'amélioration pour le projet
+/**
+ * Génère le prompt pour l'IA avec le diff Git.
+ * @param {string} diffText - Contenu du diff Git
+ * @param {string} status - Statut du push (success/fail)
+ * @returns {string} Prompt pour l'IA
+ */
+function generatePrompt(diffText, status) {
+  return `
+Tu es un expert en revue de code. Analyse le diff Git suivant et génère un e-mail professionnel en HTML complet pour un feedback sur le code. L'e-mail doit :
+- Être esthétique, professionnel et convivial, avec des styles CSS en ligne (palette : bleu, vert, gris clair).
+- Inclure un titre, une introduction, les résultats des linters (si pertinents), le diff Git, et des recommandations d'amélioration.
+- Mentionner si le code est impeccable ou signaler les erreurs/suggestions avec des corrections précises (indiquer les lignes si possible).
+- Être compatible avec tous les clients de messagerie (styles en ligne, pas de scripts externes).
+- Avoir un sujet clair et adapté au statut du push (${status}).
+- Commencer par "Objet : <sujet>" suivi du code HTML complet (<html>, <body>, etc.).
 
-Diff :
+Diff Git :
 ${diffText}
-Réponds en français, format : 
-Objet : <objet du mail>
-<texte du mail>
 `;
+}
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+/**
+ * Appelle l'API Google GenAI pour générer la revue de code en HTML.
+ * @param {string} prompt - Prompt pour l'IA
+ * @returns {Promise<string>} Contenu HTML de l'e-mail
+ */
+async function getAIReview(prompt) {
+  try {
+    const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const response = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
-    return response.text;
+    let htmlContent = response.text.trim();
+    // Nettoyer les balises Markdown si présentes
+    if (htmlContent.startsWith('```html')) {
+      htmlContent = htmlContent.replace(/^```html\n|```$/g, '').trim();
+    }
+    return htmlContent;
+  } catch (error) {
+    console.error('❌ Erreur lors de la génération via Google GenAI :', error);
+    return `
+      <html>
+        <body style="font-family: Arial, sans-serif; color: #333; background-color: #f4f4f4; padding: 20px;">
+          <h1 style="color: #d32f2f;">Erreur d'API Google GenAI</h1>
+          <p>Impossible de générer la revue de code. Erreur : ${error.message}</p>
+        </body>
+      </html>
+    `;
+  }
+}
+
+/**
+ * Extrait le sujet de l'e-mail à partir de la réponse de l'IA.
+ * @param {string} aiContent - Contenu généré par l'IA
+ * @returns {{ subject: string, html: string }} Sujet et corps HTML
+ */
+function extractSubjectAndHtml(aiContent) {
+  const subjectMatch = aiContent.match(/Objet\s*:\s*(.+)/i);
+  let subject = 'Revue de Code Automatisée - Analyse IA';
+  let html = aiContent;
+
+  if (subjectMatch) {
+    subject = subjectMatch[1].trim();
+    // Supprimer la ligne "Objet :" du contenu HTML
+    html = aiContent.replace(/Objet\s*:\s*.+\n?/, '').trim();
   }
 
-  // --- 4️⃣ Lecture du diff pour le rapport IA ---
-  let diffText = "Aucun diff disponible.";
+  return { subject, html };
+}
+
+/**
+ * Envoie l'e-mail via Nodemailer.
+ * @param {string} recipient - Adresse e-mail du destinataire
+ * @param {string} subject - Sujet de l'e-mail
+ * @param {string} htmlBody - Corps HTML de l'e-mail
+ */
+async function sendEmail(recipient, subject, htmlBody) {
   try {
-    diffText = execSync("git diff --cached").toString();
-  } catch {
-    console.log("⚠️ Impossible de récupérer le diff Git, mail générique sera envoyé.");
-  }
+    const transporter = nodemailer.createTransport(SMTP_CONFIG);
+    const mailOptions = {
+      from: `Git AI Bot <${SMTP_CONFIG.auth.user || DEFAULT_EMAIL}>`,
+      to: recipient,
+      subject,
+      html: htmlBody,
+    };
 
-  // --- 5️⃣ Génération du contenu mail ---
-  let aiMailContent;
-  try {
-    aiMailContent = await generateMail(diffText);
-  } catch (err) {
-    console.error("❌ Erreur génération mail IA :", err);
-    aiMailContent = "Impossible de générer le contenu via l'IA.";
-  }
-
-  // --- 6️⃣ Préparation du sujet et du corps du mail ---
-  let subject = status === "fail" ? "❌ Push bloqué - Analyse IA" : "✅ Push validé - Analyse IA";
-  let body = aiMailContent;
-
-  // Si Gemini retourne "Objet : ..." on l'utilise
-  try {
-    const objMatch = aiMailContent.match(/Objet\s*:\s*(.+)/i);
-    if (objMatch) subject = objMatch[1].trim();
-  } catch {
-    // ignore si aiMailContent n'est pas une string
-  }
-
-  // --- 7️⃣ Configuration du transporteur SMTP ---
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  // --- 8️⃣ Préparation et envoi du mail ---
-  const mailOptions = {
-    from: `Git AI Bot <${process.env.SMTP_USER || toEmails}>`,
-    to: toEmails,
-    subject,
-    text: body,
-  };
-
-  try {
     await transporter.sendMail(mailOptions);
-    console.log("📧 Mail envoyé à", toEmails);
-  } catch (err) {
-    console.error("❌ Erreur envoi mail :", err);
+    console.log('📧 E-mail envoyé à', recipient);
+  } catch (error) {
+    console.error('❌ Erreur lors de l’envoi de l’e-mail :', error);
+    console.log('\n--- Contenu HTML non envoyé (pour débogage) ---\n');
+    console.log(htmlBody);
+    console.log('\n----------------------------------------------------\n');
   }
+}
 
+// --- Logique principale ---
+(async () => {
+  console.log('🚀 Début de l’analyse du push...');
+
+  // 1. Récupérer le statut du push
+  const status = process.argv[2] || 'success';
+  console.log('📊 Statut du push :', status);
+
+  // 2. Récupérer l'adresse e-mail
+  const recipientEmail = getRecipientEmail();
+
+  // 3. Récupérer le diff Git
+  const diffText = getGitDiff();
+
+  // 4. Générer le prompt pour l'IA
+  const prompt = generatePrompt(diffText, status);
+
+  // 5. Obtenir la revue de l'IA
+  const aiReview = await getAIReview(prompt);
+
+  // 6. Extraire le sujet et le corps HTML
+  const { subject, html } = extractSubjectAndHtml(aiReview);
+
+  // 7. Envoyer l'e-mail
+  await sendEmail(recipientEmail, subject, html);
+
+  console.log('✅ Analyse et envoi terminés.');
 })();

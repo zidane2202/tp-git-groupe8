@@ -22,7 +22,8 @@
   <link rel="stylesheet" href="css/aos.css">
   <link rel="stylesheet" href="css/style.css">
 
-  <title>Apprenant - Éducation de qualité pour tous</title>
+  <title>Git-groupe8</title>
+
 </head>
 
 <body>
@@ -169,13 +170,24 @@
               <a href="#" title="YouTube"><span class="icon-youtube"></span></a>
               <a href="#" title="Pinterest"><span class="icon-pinterest"></span></a>
             </div>
+            </form>
+
+            <!-- social icons on the form -->
+            <div class="form-social">
+              <a href="#" title="Instagram"><span class="icon-instagram"></span></a>
+              <a href="#" title="Twitter"><span class="icon-twitter"></span></a>
+              <a href="#" title="Facebook"><span class="icon-facebook"></span></a>
+              <a href="#" title="LinkedIn"><span class="icon-linkedin"></span></a>
+              <a href="#" title="YouTube"><span class="icon-youtube"></span></a>
+              <a href="#" title="Pinterest"><span class="icon-pinterest"></span></a>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
   <!-- animation script moved to load after jQuery include to avoid '$ is not defined' -->
+
 
   <div class="site-footer">
     <div class="container">
@@ -225,7 +237,7 @@
         <div class="col-lg-3">
           <div class="widget">
             <h3>Contact</h3>
-            <address>123 Rue de l'Éducation, Ville du Savoir, 3910</address>
+            <address>Yaounde Bastos, Rue 1899</address>
             <ul class="list-unstyled links mb-4">
               <li><a href="tel:+11234567890">+1 (123) 456-7890</a></li>
               <li><a href="tel:+11234567890">+1 (123) 456-7890</a></li>
@@ -236,7 +248,10 @@
       </div>
       <div class="row mt-5">
         <div class="col-12 text-center">
-          <p class="copyright">Copyright &copy;<script>document.write(new Date().getFullYear());</script>. Tous droits réservés. &mdash; Conçu avec amour par <a href="https://untree.co">Untree.co</a> Distribué par <a href="https://themewagon.com">ThemeWagon</a></p>
+
+          <p class="copyright">Copyright &copy;<script>document.write(new Date().getFullYear());</script>. All Rights Reserved. &mdash; Designed with love by <a href="https://untree.co">Untree.co</a>  Distributed By <a href="https://themewagon.com">ThemeWagon</a></p> <!-- License information: https://untree.co/license/ -->
+
+          </div>
         </div>
       </div>
     </div>
@@ -262,16 +277,25 @@
 
   </body>
 
-  <script src="js/jquery-3.4.1.min.js"></script>
-  <script src="js/popper.min.js"></script>
-  <script src="js/bootstrap.min.js"></script>
-  <script src="js/owl.carousel.min.js"></script>
-  <script src="js/jquery.animateNumber.min.js"></script>
-  <script src="js/jquery.waypoints.min.js"></script>
-  <script src="js/jquery.fancybox.min.js"></script>
-  <script src="js/jquery.sticky.js"></script>
-  <script src="js/aos.js"></script>
-  <script src="js/custom.js"></script>
+    <script src="js/jquery-3.4.1.min.js"></script>
+
+    <script>
+      // trigger the SVG draw and card emergence (runs after jQuery is loaded)
+      $(function(){
+        setTimeout(function(){ $('.ff-svg').addClass('visible'); }, 200);
+        setTimeout(function(){ $('.ff-card').addClass('visible'); }, 900);
+      });
+    </script>
+
+    <script src="js/popper.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/owl.carousel.min.js"></script>
+    <script src="js/jquery.animateNumber.min.js"></script>
+    <script src="js/jquery.waypoints.min.js"></script>
+    <script src="js/jquery.fancybox.min.js"></script>
+    <script src="js/jquery.sticky.js"></script>
+    <script src="js/aos.js"></script>
+    <script src="js/custom.js"></script>
 
 </body>
 </html>

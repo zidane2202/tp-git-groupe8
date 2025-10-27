@@ -4,6 +4,9 @@ import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import path from "path";
 
+// Le client lit la clé API depuis la variable d'environnement GEMINI_API_KEY
+const ai = new GoogleGenAI({});
+
 // Définir le chemin absolu pour le rapport
 const REPORT_PATH = path.resolve(process.cwd(), "ai_report.html");
 
@@ -21,8 +24,8 @@ const main = async () => {
   if (!diff || diff.trim().length === 0) {
     // Si pas de diff, on écrit un rapport vide et on sort avec succès
     fs.writeFileSync(REPORT_PATH, "<!DOCTYPE html><html><head><title>Revue de Code Impeccable - Aucun Changement</title></head><body><h1>Aucun changement à analyser.</h1><p>Le push a été validé car aucun fichier n'a été modifié.</p></body></html>", "utf8");
-    console.error("✅ IA: OK - Aucun diff à analyser.");
-    // IMPORTANT : Afficher le chemin du rapport sur stdout pour que le script appelant puisse le récupérer
+    process.stderr.write("✅ IA: OK - Aucun diff à analyser.\n");
+    // IMPORTANT : Afficher UNIQUEMENT le chemin du rapport sur stdout pour la capture
     console.log(REPORT_PATH); 
     process.exit(0);
   }
@@ -62,21 +65,21 @@ ${diff}
     const titleMatch = htmlContent.match(/<title>(.*?)<\/title>/i);
     const title = titleMatch ? titleMatch[1] : "";
 
-    // IMPORTANT : Afficher le chemin du rapport sur stdout pour que le script appelant puisse le récupérer
+    // IMPORTANT : Afficher UNIQUEMENT le chemin du rapport sur stdout pour la capture
     console.log(REPORT_PATH); 
 
     if (title.toLowerCase().includes("impeccable") || title.toLowerCase().includes("validé") || title.toLowerCase().includes("ok")) {
-      console.error("✅ IA: OK - Revue de code impeccable.");
+      process.stderr.write("✅ IA: OK - Revue de code impeccable.\n");
       process.exit(0);
     } else {
-      console.error("❌ IA: problèmes détectés - Revue de code requise.");
-      console.error("\n--- Contenu HTML du rapport ---\n" + htmlContent + "\n-------------------------------\n");
+      process.stderr.write("❌ IA: problèmes détectés - Revue de code requise.\n");
+      process.stderr.write("\n--- Contenu HTML du rapport ---\n" + htmlContent + "\n-------------------------------\n");
       process.exit(1);
     }
   } catch (err) {
-    console.error("Erreur lors de l'appel Gemini :", err);
+    process.stderr.write(`Erreur lors de l'appel Gemini : ${err.message}\n`);
     fs.writeFileSync(REPORT_PATH, `<!DOCTYPE html><html><head><title>Erreur Critique API IA</title></head><body><h1>Erreur de communication avec l'API IA.</h1><p>${err.message}</p></body></html>`, "utf8");
-    // IMPORTANT : Afficher le chemin du rapport sur stdout pour que le script appelant puisse le récupérer
+    // IMPORTANT : Afficher UNIQUEMENT le chemin du rapport sur stdout pour la capture
     console.log(REPORT_PATH); 
     process.exit(1);
   }

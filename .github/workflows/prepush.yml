@@ -3,7 +3,7 @@ name: Code Review and Notification
 on:
   push:
     branches:
-      - main
+      - develop
 
 jobs:
   review:

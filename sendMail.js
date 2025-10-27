@@ -34,15 +34,19 @@ import { execSync } from "child_process";
   <style>
     body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
-    h1 { color: #1a73e8; }
+    h1 { color: ${status === "fail" ? "#d32f2f" : "#1a73e8"}; }
+    .section { margin-bottom: 20px; }
     .footer { font-size: 12px; color: #666; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Revue de Code Automatisée</h1>
+    <h1>Revue de Code Automatisée - ${status === "fail" ? "Erreurs Détectées" : "Analyse Réussie"}</h1>
     <p>Bonjour,</p>
-    <p>Aucun rapport d'analyse valide n'a pu être généré. Veuillez vérifier votre push.</p>
+    <div class="section">
+      <h2>Problème détecté</h2>
+      <p>Aucun rapport d'analyse valide n'a pu être généré. Veuillez vérifier votre push ou contacter l'équipe pour assistance.</p>
+    </div>
     <p class="footer">Merci pour votre contribution ! L'équipe AI Bot</p>
   </div>
 </body>
@@ -57,16 +61,24 @@ import { execSync } from "child_process";
     body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
     h1 { color: #d32f2f; }
+    .section { margin-bottom: 20px; }
     .footer { font-size: 12px; color: #666; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Erreur lors de l'Envoi</h1>
+    <h1>Revue de Code Automatisée - Erreur Critique</h1>
     <p>Bonjour,</p>
-    <p>Une erreur s'est produite lors de la génération du rapport : ${err.message}</p>
-    <p>Veuillez contacter l'équipe pour plus de détails.</p>
-    <p class="footer">L'équipe AI Bot</p>
+    <div class="section">
+      <h2>Erreur détectée</h2>
+      <p>Une erreur s'est produite lors de la lecture du rapport : ${err.message}</p>
+    </div>
+    <div class="section">
+      <h2>Suggestions</h2>
+      <p>Veuillez vérifier que le fichier ai_report.txt existe et est accessible.</p>
+      <p>Contactez l'équipe pour assistance si le problème persiste.</p>
+    </div>
+    <p class="footer">Merci pour votre contribution ! L'équipe AI Bot</p>
   </div>
 </body>
 </html>`;

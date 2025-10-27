@@ -1,5 +1,5 @@
-import 'dotenv/config'; // Charge automatiquement les variables depuis .env
-import { GoogleGenAI } from "@google/genai";
+import 'dotenv/config';
+import { GoogleGenAI } from "@google/generative-ai";
 import fs from "fs";
 
 // Configure le client Gemini avec la clé API
@@ -24,7 +24,7 @@ Tu es un expert en analyse de code HTML, CSS et JavaScript. Ta tâche est d'anal
    - Les erreurs de syntaxe, bugs évidents ou risques de sécurité.
    - Les problèmes de qualité (lisibilité, performance, conventions).
    - Les suggestions d'amélioration avec des exemples concrets.
-2. Génère **uniquement** un e-mail HTML complet et esthétique (avec `<html>`, `<body>`, styles CSS en ligne).
+2. Génère **uniquement** un e-mail HTML complet et esthétique (avec <html>, <body>, styles CSS en ligne).
 3. L'e-mail doit être professionnel, clair, et convivial, avec :
    - Une introduction remerciant le développeur pour son push.
    - Une section listant les fichiers analysés.
@@ -79,6 +79,7 @@ const main = async () => {
   const diff = await readStdin();
 
   if (!diff || diff.trim().length === 0) {
+    // eslint-disable-next-line no-undef
     const htmlContent = `
 <html>
 <head>
@@ -113,14 +114,35 @@ const main = async () => {
 
     let htmlContent = response.text.trim();
     // Nettoyer les balises markdown si présentes
-    if (htmlContent.startsWith("```html")) {
-      htmlContent = htmlContent.replace(/^```html\n|```$/g, "").trim();
+    htmlContent = htmlContent.replace(/^```html\n/g, '').replace(/```$/g, '');
+    if (!htmlContent.includes("<html")) {
+      console.warn("⚠️ Contenu non HTML reçu de l'API Gemini, utilisation d'un message par défaut.");
+      htmlContent = `
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
+    h1 { color: #1a73e8; }
+    .footer { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Revue de Code Automatisée</h1>
+    <p>Bonjour,</p>
+    <p>Impossible de générer un rapport d'analyse valide. Veuillez vérifier votre diff.</p>
+    <p class="footer">Merci pour votre contribution ! L'équipe AI Bot</p>
+  </div>
+</body>
+</html>`;
     }
 
     fs.writeFileSync("ai_report.txt", htmlContent, "utf8");
     console.log("✅ IA: Analyse générée avec succès");
     process.exit(0);
   } catch (err) {
+    // eslint-disable-next-line no-undef
     const errorHtml = `
 <html>
 <head>

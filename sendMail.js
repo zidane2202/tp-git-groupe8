@@ -2,10 +2,10 @@ import 'dotenv/config';
 import nodemailer from "nodemailer";
 import { execSync } from "child_process";
 import fs from "fs";
-import path from "path"; // Importation de 'path'
+import path from "path";
 
-// Définir le chemin absolu pour le rapport
-const REPORT_PATH = path.resolve(process.cwd(), "ai_report.html");
+// Le chemin du rapport est maintenant le premier argument passé au script
+const REPORT_PATH = process.argv[2]; 
 
 // Fonction utilitaire pour lire le titre du HTML
 function extractSubjectFromHtml(htmlContent) {
@@ -23,39 +23,54 @@ function extractSubjectFromHtml(htmlContent) {
     try {
       // Tente de récupérer l'e-mail de l'utilisateur Git
       toEmails = execSync("git config user.email").toString().trim();
-      console.log("📧 Adresse Git détectée :", toEmails);
+      console.error("📧 Adresse Git détectée :", toEmails);
     } catch {
       // Fallback si la configuration Git n'est pas disponible
       toEmails = "default@example.com"; 
-      console.log("⚠️ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
+      console.error("⚠️ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
     }
   }
 
   // --- 2️⃣ Lecture du rapport HTML généré par analyseAI.js ---
   let htmlBody = "";
   let subject = "Revue de Code Automatisée - Statut Inconnu";
-
-  try {
-    // Utilisation du chemin absolu
-    htmlBody = fs.readFileSync(REPORT_PATH, "utf8");
-    subject = extractSubjectFromHtml(htmlBody);
-    console.log(`✅ Rapport HTML lu depuis ${REPORT_PATH}. Sujet: ${subject}`);
-  } catch (err) {
-    console.error(`❌ Erreur de lecture du rapport ${REPORT_PATH}:`, err);
-    // Génération d'un corps HTML d'erreur
-    subject = "❌ Erreur Critique - Revue de Code Automatisée";
+  
+  if (!REPORT_PATH) {
+    subject = "❌ Erreur Critique - Chemin du Rapport Manquant";
     htmlBody = `
       <html>
       <head><title>${subject}</title></head>
       <body style="font-family: sans-serif; color: #333; padding: 20px;">
         <h1 style="color: #d9534f;">Erreur Critique</h1>
-        <p>Le rapport d'analyse de code (<code>${REPORT_PATH}</code>) n'a pas pu être lu ou généré.</p>
-        <p>Veuillez vérifier l'exécution du script <code>analyseAI.js</code>. Erreur système :</p>
-        <pre style="background-color: #f9f9f9; padding: 10px; border: 1px solid #eee;">${err.message}</pre>
+        <p>Le chemin du rapport d'analyse de code n'a pas été fourni au script <code>sendMail.js</code>.</p>
+        <p><strong>Veuillez vérifier votre script de hook Git :</strong> il doit capturer la sortie standard (stdout) de <code>analyseAI.js</code> et la passer en argument à <code>sendMail.js</code>.</p>
+        <p>Exemple de commande dans votre hook : <code>REPORT_PATH=$(node analyseAI.js) && node sendMail.js "$REPORT_PATH"</code></p>
       </body>
       </html>
     `;
-    // On ne sort pas en erreur ici pour s'assurer que l'e-mail d'erreur est envoyé.
+    console.error(`❌ Erreur critique : Le chemin du rapport AI n'a pas été fourni en argument.`);
+  } else {
+    try {
+      // Utilisation du chemin fourni en argument
+      htmlBody = fs.readFileSync(REPORT_PATH, "utf8");
+      subject = extractSubjectFromHtml(htmlBody);
+      console.error(`✅ Rapport HTML lu depuis ${REPORT_PATH}. Sujet: ${subject}`);
+    } catch (err) {
+      console.error(`❌ Erreur de lecture du rapport ${REPORT_PATH}:`, err);
+      // Génération d'un corps HTML d'erreur
+      subject = "❌ Erreur Critique - Revue de Code Automatisée";
+      htmlBody = `
+        <html>
+        <head><title>${subject}</title></head>
+        <body style="font-family: sans-serif; color: #333; padding: 20px;">
+          <h1 style="color: #d9534f;">Erreur Critique</h1>
+          <p>Le rapport d'analyse de code (<code>${REPORT_PATH}</code>) n'a pas pu être lu ou généré.</p>
+          <p>Veuillez vérifier l'exécution du script <code>analyseAI.js</code>. Erreur système :</p>
+          <pre style="background-color: #f9f9f9; padding: 10px; border: 1px solid #eee;">${err.message}</pre>
+        </body>
+        </html>
+      `;
+    }
   }
 
   // --- 3️⃣ Configuration du transporteur SMTP ---
@@ -82,11 +97,11 @@ function extractSubjectFromHtml(htmlContent) {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log("📧 Mail de revue de code envoyé à", toEmails);
+    console.error("📧 Mail de revue de code envoyé à", toEmails);
   } catch (err) {
     console.error("❌ Erreur envoi mail :", err);
     // Afficher le corps HTML en cas d'échec d'envoi pour le débogage
-    console.log("\n--- Contenu HTML non envoyé (pour débogage) ---\n" + htmlBody + "\n----------------------------------------------------\n");
+    console.error("\n--- Contenu HTML non envoyé (pour débogage) ---\n" + htmlBody + "\n----------------------------------------------------\n");
     process.exit(1); // Sortie en erreur si l'envoi échoue
   }
 

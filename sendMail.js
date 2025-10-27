@@ -2,6 +2,8 @@ import 'dotenv/config';
 import nodemailer from "nodemailer";
 import { GoogleGenAI } from "@google/genai";
 import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
 
 // Version corrigée : tout est exécuté dans une IIFE async pour permettre l'utilisation d'`await` en toute sécurité.
 (async () => {
@@ -25,18 +27,69 @@ import { execSync } from "child_process";
   // --- 3️⃣ Génération du mail via Gemini (Google GenAI) ---
   const ai = new GoogleGenAI({});
 
-  async function generateMail(diffText) {
-    const prompt = `
-Tu es un assistant expert en développement. Génère un mail professionnel basé sur le diff suivant :
-1) Résultats des linters et autres outils d'analyse statique
-2) Diff Git des fichiers modifiés
-3) Recommandations, remarques et suggestions d'amélioration pour le projet
+  // --- Fonction pour lire le contenu des fichiers HTML ---
+  function getFileContent(filePath) {
+    if (!filePath.endsWith(".html")) {
+      return null;
+    }
+    if (!fs.existsSync(filePath)) {
+      return `--- Impossible de lire le fichier: ${filePath} (fichier non trouvé) ---\n`;
+    }
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const lines = content.split('\n').slice(0, 200);
+      const numberedContent = lines.map((line, i) => `${i+1}: ${line}`).join('\n');
+      return numberedContent;
+    } catch (error) {
+      return `--- Impossible de lire le fichier: ${filePath} (Erreur: ${error.message}) ---\n`;
+    }
+  }
 
-Diff :
+  // --- Fonction pour obtenir les fichiers modifiés ---
+  function getChangedFiles() {
+    try {
+      const diffOutput = execSync("git diff --cached --name-only").toString();
+      return diffOutput.trim().split('\n').filter(file => file.length > 0);
+    } catch {
+      return [];
+    }
+  }
+
+  async function generateMail(diffText, changedFiles) {
+    // Construire le contenu des fichiers HTML
+    let filesContent = "";
+    for (const file of changedFiles) {
+      const content = getFileContent(file);
+      if (content) {
+        filesContent += `--- Contenu du fichier: ${file} ---\n${content}\n`;
+      }
+    }
+
+    const prompt = `
+Vous êtes un expert en revue de code. Analysez les fichiers suivants et générez un email complet *uniquement en HTML*, sans aucune syntaxe Markdown.
+
+Fichiers à analyser :
+${changedFiles.join(', ')}
+
+Contenu :
+${filesContent}
+
+Diff Git :
 ${diffText}
-Réponds en français, format : 
-Objet : <objet du mail>
-<texte du mail>
+
+Contraintes du mail HTML :
+- Boîte centrale blanche, bord arrondi, ombre douce
+- Fond général gris clair (#f4f4f9)
+- Police Arial ou sans-serif
+- Titre principal : "Revue de Code - Code validé" (vert) ou "Revue de Code - Erreurs détectées" (rouge)
+- Liste des erreurs détectées en rouge si présentes
+- Section "Suggestions IA" en bleu pour le titre, texte gris foncé (#333)
+- CSS en ligne uniquement
+- Séparateurs <hr> entre sections
+- Inclure extraits de code pertinents, erreurs et corrections
+- Si aucun problème n'est détecté, féliciter le développeur et proposer des améliorations optionnelles
+- Toujours produire un HTML complet (<html>, <body>, etc.)
+- *IMPORTANT* : Ne générez *aucun Markdown*.
 `;
 
     const response = await ai.models.generateContent({
@@ -47,7 +100,7 @@ Objet : <objet du mail>
     return response.text;
   }
 
-  // --- 4️⃣ Lecture du diff pour le rapport IA ---
+  // --- 4️⃣ Lecture du diff et des fichiers modifiés ---
   let diffText = "Aucun diff disponible.";
   try {
     diffText = execSync("git diff --cached").toString();
@@ -55,25 +108,34 @@ Objet : <objet du mail>
     console.log("⚠️ Impossible de récupérer le diff Git, mail générique sera envoyé.");
   }
 
+  const changedFiles = getChangedFiles();
+  console.log(`📁 Fichiers modifiés: ${changedFiles.join(', ')}`);
+
   // --- 5️⃣ Génération du contenu mail ---
   let aiMailContent;
   try {
-    aiMailContent = await generateMail(diffText);
+    aiMailContent = await generateMail(diffText, changedFiles);
   } catch (err) {
     console.error("❌ Erreur génération mail IA :", err);
-    aiMailContent = "Impossible de générer le contenu via l'IA.";
+    aiMailContent = `
+      <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px;">
+          <div style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h1 style="color: #e74c3c;">❌ Erreur d'analyse IA</h1>
+            <p>Impossible de générer le contenu via l'IA. Erreur: ${err.message}</p>
+          </div>
+        </body>
+      </html>
+    `;
   }
 
   // --- 6️⃣ Préparation du sujet et du corps du mail ---
-  let subject = status === "fail" ? "❌ Push bloqué - Analyse IA" : "✅ Push validé - Analyse IA";
-  let body = aiMailContent;
+  let subject = status === "fail" ? "⚠ Revue de Code - Erreurs détectées" : "✅ Revue de Code - Code Validé";
+  let htmlBody = aiMailContent;
 
-  // Si Gemini retourne "Objet : ..." on l'utilise
-  try {
-    const objMatch = aiMailContent.match(/Objet\s*:\s*(.+)/i);
-    if (objMatch) subject = objMatch[1].trim();
-  } catch {
-    // ignore si aiMailContent n'est pas une string
+  // Nettoyer le contenu HTML si nécessaire
+  if (htmlBody.includes('```html')) {
+    htmlBody = htmlBody.replace(/```html\n?/g, '').replace(/```\n?/g, '');
   }
 
   // --- 7️⃣ Configuration du transporteur SMTP ---
@@ -92,7 +154,8 @@ Objet : <objet du mail>
     from: `Git AI Bot <${process.env.SMTP_USER || toEmails}>`,
     to: toEmails,
     subject,
-    text: body,
+    html: htmlBody,
+    text: "Veuillez activer l'affichage HTML pour voir le contenu complet de ce message.",
   };
 
   try {
@@ -100,6 +163,9 @@ Objet : <objet du mail>
     console.log("📧 Mail envoyé à", toEmails);
   } catch (err) {
     console.error("❌ Erreur envoi mail :", err);
+    console.log("\n--- Contenu HTML non envoyé (pour débogage) ---\n");
+    console.log(htmlBody);
+    console.log("\n----------------------------------------------------\n");
   }
 
 })();

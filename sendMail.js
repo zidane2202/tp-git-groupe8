@@ -3,12 +3,8 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import { execSync } from "child_process";
 
-// Exécuté dans une IIFE async
 (async () => {
-  // --- 1️⃣ Récupération de l'état du push ---
   const status = process.argv[2] || "success";
-
-  // --- 2️⃣ Récupération des adresses e-mails ---
   let toEmails;
   if (process.env.NOTIFY_EMAILS) {
     toEmails = process.env.NOTIFY_EMAILS;
@@ -22,7 +18,6 @@ import { execSync } from "child_process";
     }
   }
 
-  // --- 3️⃣ Lecture du rapport IA ---
   let htmlContent;
   try {
     htmlContent = fs.readFileSync("ai_report.txt", "utf8");
@@ -84,10 +79,7 @@ import { execSync } from "child_process";
 </html>`;
   }
 
-  // --- 4️⃣ Configuration du sujet du mail ---
   const subject = status === "fail" ? "❌ Push bloqué - Analyse IA" : "✅ Push validé - Analyse IA";
-
-  // --- 5️⃣ Configuration du transporteur SMTP ---
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
     port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
@@ -101,7 +93,6 @@ import { execSync } from "child_process";
     socketTimeout: 10000,
   });
 
-  // --- 6️⃣ Vérification de la connexion SMTP ---
   try {
     await transporter.verify();
     console.log("✅ Connexion SMTP vérifiée");
@@ -111,7 +102,6 @@ import { execSync } from "child_process";
     process.exit(1);
   }
 
-  // --- 7️⃣ Préparation et envoi du mail ---
   const mailOptions = {
     from: `Git AI Bot <${process.env.SMTP_USER || toEmails}>`,
     to: toEmails,

@@ -18,7 +18,8 @@ module.exports = defineConfig([
       "js/jquery.fancybox.min.js",
       "js/jquery.sticky.js",
       "js/owl.carousel.min.js",
-      "js/popper.min.js"
+      "js/popper.min.js",
+      "js/script.js"  // Ignoring script.js since its functions are used as event handlers
     ],
   },
   {

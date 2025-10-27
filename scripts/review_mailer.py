@@ -1,4 +1,4 @@
-import os
+import os 
 import sys
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -28,27 +28,31 @@ class SyntaxChecker(HTMLParser):
         self.errors = []
 
     def error(self, message):
-        self.errors.append(message)
+        line, col = self.getpos()
+        self.errors.append(f"Ligne {line}, Col {col} : {message}")
 
 def check_html_syntax(html_content):
     checker = SyntaxChecker()
     try:
         checker.feed(html_content)
     except Exception as e:
-        checker.errors.append(str(e))
+        line, col = checker.getpos()
+        checker.errors.append(f"Ligne {line}, Col {col} : {str(e)}")
     return checker.errors
 
 # --- Fonctions d'aide ---
 def get_file_content(file_path):
-    """Lit uniquement les fichiers HTML et retourne leur contenu."""
+    """Lit uniquement les fichiers HTML et retourne leur contenu numéroté."""
     if not file_path.endswith(".html"):
         return None
     if not os.path.isfile(file_path):
         return f"--- Impossible de lire le fichier: {file_path} (fichier non trouvé) ---\n"
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            content = "".join(f.readlines()[:200])
-        return content
+            lines = f.readlines()[:200]
+        # Ajouter numéro de ligne pour faciliter la lecture
+        numbered_content = "\n".join([f"{i+1}: {line}" for i, line in enumerate(lines)])
+        return numbered_content
     except Exception as e:
         return f"--- Impossible de lire le fichier: {file_path} (Erreur: {e}) ---\n"
 

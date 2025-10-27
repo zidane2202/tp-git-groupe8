@@ -19,30 +19,7 @@ RECIPIENT_EMAIL = sys.argv[1]
 
 # Supporte fichiers séparés par des virgules ou espaces
 raw_files = sys.argv[2]
-CHANGED_FILES = [f.strip() for f in raw_files.replace(',', ' ').split() if f.strip()]
-
-# --- Cas aucun fichier modifié ---
-if not CHANGED_FILES:
-    mail_subject = "✅ Push validé - Aucun fichier modifié"
-    html_review = "<p>Le push a été effectué avec succès. Aucun fichier modifié à analyser.</p>"
-    def send_email(recipient, subject, html_body):
-        try:
-            msg = MIMEMultipart('alternative')
-            msg['From'] = SENDER_EMAIL
-            msg['To'] = recipient
-            msg['Subject'] = subject
-            msg.attach(MIMEText(html_body, 'html'))
-
-            server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-            server.ehlo()
-            server.login(SENDER_EMAIL, GMAIL_APP_PASSWORD)
-            server.sendmail(SENDER_EMAIL, recipient, msg.as_string())
-            server.close()
-            print(f"Succès: Email envoyé à {recipient}")
-        except Exception as e:
-            print(f"Erreur: Impossible d'envoyer l'email à {recipient}. Erreur: {e}")
-    send_email(RECIPIENT_EMAIL, mail_subject, html_review)
-    sys.exit(0)
+CHANGED_FILES = [f.strip() for f in raw_files.replace(',', ' ').split()]
 
 # --- Vérification syntaxe HTML ---
 class SyntaxChecker(HTMLParser):
@@ -65,6 +42,7 @@ def check_html_syntax(html_content):
 
 # --- Fonctions d'aide ---
 def get_file_content(file_path):
+    """Lit uniquement les fichiers HTML et retourne leur contenu numéroté."""
     if not file_path.endswith(".html"):
         return None
     if not os.path.isfile(file_path):
@@ -139,9 +117,9 @@ def send_email(recipient, subject, html_body):
         print(f"Succès: Email de revue de code envoyé à {recipient}")
     except Exception as e:
         print(f"Erreur: Échec de l'envoi de l'email à {recipient}. Erreur: {e}")
-        print("\n--- Contenu HTML non envoyé ---\n")
+        print("\n--- Contenu HTML non envoyé (pour débogage) ---\n")
         print(html_body)
-        print("\n---------------------------------\n")
+        print("\n----------------------------------------------------\n")
 
 # --- Logique principale ---
 print(f"Début de l'analyse pour le push de: {RECIPIENT_EMAIL}")
@@ -163,17 +141,19 @@ for file in CHANGED_FILES:
 review_prompt = generate_prompt(CHANGED_FILES)
 html_review = get_ai_review(review_prompt)
 
-# Combiner erreurs locales et rapport IA
-if html_errors_summary:
-    html_review = html_errors_summary + html_review
-    exit_code = 1
+# Combiner les erreurs locales et IA
+html_review_combined = html_errors_summary + html_review
+
+# Déterminer si le push doit être bloqué
+if html_errors_summary or "⚠️ Revue de Code - Erreurs détectées" in html_review:
+    exit_code = 1  # Bloque le push
     mail_subject = "⚠️ Revue de Code - Erreurs détectées"
 else:
     exit_code = 0
     mail_subject = "✅ Revue de Code - Code Validé"
 
 # Envoi du mail
-send_email(RECIPIENT_EMAIL, mail_subject, html_review)
+send_email(RECIPIENT_EMAIL, mail_subject, html_review_combined)
 
-# Faire échouer le push si des erreurs détectées
+# Exit avec le code pour le hook pre-push
 sys.exit(exit_code)

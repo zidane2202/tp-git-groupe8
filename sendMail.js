@@ -28,7 +28,6 @@ import { execSync } from "child_process";
     htmlContent = fs.readFileSync("ai_report.txt", "utf8");
     if (!htmlContent.includes("<html")) {
       console.warn("⚠️ Contenu non HTML détecté, utilisation d'un message par défaut.");
-      // eslint-disable-next-line no-undef
       htmlContent = `
 <html>
 <head>
@@ -51,7 +50,6 @@ import { execSync } from "child_process";
     }
   } catch (err) {
     console.error("❌ Erreur lors de la lecture de ai_report.txt :", err);
-    // eslint-disable-next-line no-undef
     htmlContent = `
 <html>
 <head>

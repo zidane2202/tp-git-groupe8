@@ -1,9 +1,9 @@
 import 'dotenv/config';
-import { GoogleGenAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai"; // Correction de l'importation
 import fs from "fs";
 
 // Configure le client Gemini avec la clé API
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Fonction pour lire le diff depuis stdin
 const readStdin = async () => {
@@ -79,7 +79,6 @@ const main = async () => {
   const diff = await readStdin();
 
   if (!diff || diff.trim().length === 0) {
-    // eslint-disable-next-line no-undef
     const htmlContent = `
 <html>
 <head>
@@ -107,14 +106,14 @@ const main = async () => {
   const prompt = generatePrompt(diff);
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
+    const response = await ai.generateContent({
+      model: "gemini-1.5-flash", // Mise à jour du modèle si nécessaire
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    let htmlContent = response.text.trim();
+    let htmlContent = response.response.text().trim();
     // Nettoyer les balises markdown si présentes
-    htmlContent = htmlContent.replace(/^```html\n/g, '').replace(/```$/g, '');
+    htmlContent = htmlContent.replace(/^```html\n|```$/g, "").replace(/^```[\s\S]*?\n|```$/g, "").trim();
     if (!htmlContent.includes("<html")) {
       console.warn("⚠️ Contenu non HTML reçu de l'API Gemini, utilisation d'un message par défaut.");
       htmlContent = `
@@ -142,7 +141,6 @@ const main = async () => {
     console.log("✅ IA: Analyse générée avec succès");
     process.exit(0);
   } catch (err) {
-    // eslint-disable-next-line no-undef
     const errorHtml = `
 <html>
 <head>

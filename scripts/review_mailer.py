@@ -36,7 +36,7 @@ def generate_prompt(changed_files):
     files_content = ""
     for file in changed_files:
         # Ignorer fichiers binaires ou GitHub Actions
-        if file.startswith('.github/') or file.endswith(('.png', '.jpg', '.gif', '.bin', '.css', '.js')):
+        if file.startswith('.github/') or file.endswith(('.png', '.jpg', '.gif', '.bin')):
             continue
         files_content += get_file_content(file)
 

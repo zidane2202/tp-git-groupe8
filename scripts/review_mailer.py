@@ -15,57 +15,57 @@ if len(sys.argv) < 3:
     sys.exit(1)
 
 RECIPIENT_EMAIL = sys.argv[1]
+CHANGED_FILES = sys.argv[2].split()
 
-# Supporte fichiers séparés par des virgules ou espaces
-raw_files = sys.argv[2]
-CHANGED_FILES = [f.strip() for f in raw_files.replace(',', ' ').split()]
-
-# --- Fonctions d'aide ---
+# --- Fonctions ---
 def get_file_content(file_path):
-    if not os.path.isfile(file_path):
-        return f"--- Impossible de lire le fichier: {file_path} (fichier non trouvé) ---\n"
+    """Lit le contenu d'un fichier (jusqu'à 200 lignes)."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            content = "".join(f.readlines()[:100])
-        return f"--- Contenu du fichier: {file_path} ---\n{content}\n"
+            content = "".join(f.readlines()[:200])
+        return f"--- Contenu de {file_path} ---\n{content}\n"
     except Exception as e:
-        return f"--- Impossible de lire le fichier: {file_path} (Erreur: {e}) ---\n"
+        return f"--- Impossible de lire {file_path}: {e} ---\n"
 
 def generate_prompt(changed_files):
-    """Génère un prompt détaillé pour l'IA, avec style dynamique pour les mails."""
+    """Crée un prompt pour l'IA afin de générer un email HTML complet."""
     files_content = ""
     for file in changed_files:
-        # Ignorer fichiers binaires ou GitHub Actions
         if file.startswith('.github/') or file.endswith(('.png', '.jpg', '.gif', '.bin')):
             continue
         files_content += get_file_content(file)
 
     prompt = f"""
-Vous êtes un expert en revue de code. Analysez les fichiers suivants et générez un email complet **uniquement en HTML**, sans aucune syntaxe Markdown (pas de ##, ###, ``` ou autres).
+Vous êtes un expert en revue de code. Analysez les fichiers suivants et identifiez toutes les erreurs HTML, CSS et JavaScript, 
+y compris celles provenant de commits plus anciens.
 
-Fichiers à analyser :
-{', '.join(changed_files)}
-
-Contenu :
+Contenu des fichiers :
 {files_content}
 
-Contraintes du mail HTML :
-- Boîte centrale blanche, bord arrondi, ombre douce
-- Fond général gris clair (#f4f4f9)
-- Police Arial ou sans-serif
-- Titre principal : "Revue de Code - Code validé" (vert) ou "Revue de Code - Erreurs détectées" (rouge)
-- Liste des erreurs détectées en rouge si présentes
-- Section "Suggestions IA" en bleu pour le titre, texte gris foncé (#333)
-- CSS en ligne uniquement
-- Séparateurs <hr> entre sections
-- Inclure extraits de code pertinents, erreurs et corrections
-- Si aucun problème n'est détecté, féliciter le développeur et proposer des améliorations optionnelles
-- Toujours produire un HTML complet (<html>, <body>, etc.)
-- **IMPORTANT** : Ne générez **aucun Markdown**.
+Instructions pour l'email à générer :
+1. Toujours produire un HTML complet (<html>, <body>) avec styles en ligne.
+2. Ne jamais utiliser Markdown ou balises ``` ou ##.
+3. Titre principal : "Revue de Code - Code validé" (vert) si aucun problème,
+   ou "Revue de Code - Erreurs détectées" (rouge) si des erreurs sont trouvées.
+4. Message d’introduction expliquant que la revue a été effectuée.
+5. Pour chaque fichier avec des erreurs, détailler :
+   - Nom du fichier
+   - Description de l'erreur
+   - Extrait de code impacté
+   - Correction suggérée
+6. Ajouter une section "Suggestions IA pour l'amélioration du code".
+7. Style :
+   - Boîte centrale blanche avec bord arrondi et ombre douce
+   - Fond gris clair (#f4f4f9)
+   - Police Arial ou sans-serif
+   - Titres colorés selon importance
+   - Séparateurs <hr> entre sections
+8. Signature : "Cordialement, L'équipe de Revue de Code"
 """
     return prompt
 
 def get_ai_review(prompt):
+    """Appelle l'API Gemini pour obtenir l'email HTML."""
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         response = client.models.generate_content(
@@ -73,7 +73,6 @@ def get_ai_review(prompt):
             contents=prompt
         )
         html_content = response.text.strip()
-        # Nettoyage si l'IA ajoute du ```html par défaut
         if html_content.startswith("```html"):
             html_content = html_content.strip("```html").strip("```").strip()
         return html_content
@@ -81,6 +80,7 @@ def get_ai_review(prompt):
         return f"<h1>Erreur d'API Gemini</h1><p>Impossible d'obtenir la revue de code. Erreur: {e}</p>"
 
 def send_email(recipient, subject, html_body):
+    """Envoie l'email HTML via SMTP Gmail."""
     try:
         msg = MIMEMultipart('alternative')
         msg['From'] = SENDER_EMAIL
@@ -97,7 +97,7 @@ def send_email(recipient, subject, html_body):
         print(f"Succès: Email de revue de code envoyé à {recipient}")
     except Exception as e:
         print(f"Erreur: Échec de l'envoi de l'email à {recipient}. Erreur: {e}")
-        print("\n--- Contenu HTML non envoyé (pour débogage) ---\n")
+        print("\n--- Contenu HTML pour débogage ---\n")
         print(html_body)
         print("\n----------------------------------------------------\n")
 
@@ -108,16 +108,15 @@ print(f"Fichiers modifiés: {', '.join(CHANGED_FILES)}")
 review_prompt = generate_prompt(CHANGED_FILES)
 html_review = get_ai_review(review_prompt)
 
-# Détecter si des erreurs existent dans la réponse de l'IA
-all_errors = []
+# Détecter si des erreurs existent dans la réponse
 if "Erreurs détectées" in html_review:
     exit_code = 1
     mail_subject = "⚠️ Revue de Code - Erreurs détectées"
 else:
     exit_code = 0
-    mail_subject = "✅ Revue de Code - Code Validé"
+    mail_subject = "✅ Revue de Code - Code validé"
 
-# Envoyer le mail
+# Envoi de l'email
 send_email(RECIPIENT_EMAIL, mail_subject, html_review)
 
 # Faire échouer le push si des erreurs détectées

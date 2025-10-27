@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import nodemailer from 'nodemailer';
-import { execSync } from 'child_process';
 import fs from 'fs/promises';
 
 // Exécuté dans une IIFE async pour une gestion propre des opérations asynchrones
@@ -21,24 +20,11 @@ import fs from 'fs/promises';
   if (process.env.NOTIFY_EMAILS) {
     toEmails = process.env.NOTIFY_EMAILS.split(',').map((email) => email.trim());
   } else {
-    try {
-      toEmails = [execSync('git config user.email').toString().trim()];
-      console.log('📧 Adresse Git détectée :', toEmails);
-    } catch {
-      toEmails = ['pythiemorne22@gmail.com'];
-      console.log('⚠️ Impossible de récupérer l’e-mail Git, utilisation de l’e-mail par défaut :', toEmails);
-    }
+    toEmails = ['pythiemorne22@gmail.com'];
+    console.log('⚠️ Utilisation de l’e-mail par défaut :', toEmails);
   }
 
-  // --- 3️⃣ Lecture du diff Git ---
-  let diffText = 'Aucun diff disponible.';
-  try {
-    diffText = execSync('git diff --cached').toString();
-  } catch {
-    console.log('⚠️ Impossible de récupérer le diff Git.');
-  }
-
-  // --- 4️⃣ Lecture du rapport IA généré par AnalyseAI.js ---
+  // --- 3️⃣ Lecture du rapport IA généré par analyseAI.js ---
   let aiMailContent;
   try {
     aiMailContent = await fs.readFile('ai_report.txt', 'utf8');
@@ -53,7 +39,7 @@ import fs from 'fs/promises';
       </html>`;
   }
 
-  // --- 5️⃣ Extraction de l'objet et du corps de l'e-mail ---
+  // --- 4️⃣ Extraction de l'objet et du corps de l'e-mail ---
   let subject = 'Résultat de l’Analyse du Code';
   let htmlBody = aiMailContent;
 
@@ -85,7 +71,7 @@ import fs from 'fs/promises';
       </html>`;
   }
 
-  // --- 6️⃣ Configuration du transporteur SMTP ---
+  // --- 5️⃣ Configuration du transporteur SMTP ---
   const transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: SMTP_PORT,
@@ -96,7 +82,7 @@ import fs from 'fs/promises';
     },
   });
 
-  // --- 7️⃣ Préparation et envoi du mail ---
+  // --- 6️⃣ Préparation et envoi du mail ---
   const mailOptions = {
     from: `Git AI Bot <${SMTP_USER}>`,
     to: toEmails,

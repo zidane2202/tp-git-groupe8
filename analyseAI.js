@@ -1,11 +1,11 @@
-import 'dotenv/config'; 
+import 'dotenv/config'; // charge automatiquement les variables depuis .env
+
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 
 // Le client lit la clé API depuis la variable d'environnement GEMINI_API_KEY
 const ai = new GoogleGenAI({});
 
-// Fonction pour lire le contenu de l'entrée standard (le diff)
 const readStdin = async () => {
   return new Promise((resolve) => {
     let data = "";
@@ -17,71 +17,63 @@ const readStdin = async () => {
 
 const main = async () => {
   const diff = await readStdin();
-  
-  // Si aucun diff n'est fourni, on sort proprement.
   if (!diff || diff.trim().length === 0) {
-    fs.writeFileSync("ai_report.html", "<h1>Aucun changement à analyser.</h1><p>Le push est considéré comme valide.</p>", "utf8");
-    console.log("✅ IA: OK (Aucun diff)");
+    // Si pas de diff, on écrit un rapport vide et on sort avec succès
+    fs.writeFileSync("ai_report.html", "<h1>Aucun changement à analyser.</h1>", "utf8");
     process.exit(0);
   }
 
   const prompt = `
-Vous êtes un expert en revue de code. Votre tâche est d'analyser les changements de code suivants (format git diff --cached), 
-en vous concentrant sur la qualité, la cohérence, les erreurs potentielles et les améliorations. 
-Après l'analyse, vous devez générer une réponse **uniquement** sous forme de code HTML complet et esthétique 
-pour un e-mail de feedback. L'e-mail doit être très beau, professionnel et convivial. 
-
-- Si le code est impeccable, le titre principal de l'email doit être "✅ Revue de Code Automatisée : Succès".
-- S'il y a des erreurs ou des suggestions, le titre principal doit être "❌ Revue de Code Automatisée : Problèmes Détectés". Mentionnez-les clairement, 
+Vous êtes un expert en revue de code. Votre tâche est d'analyser le diff ci-dessous (format git diff --cached),
+en vous concentrant sur la qualité, la cohérence, les erreurs potentielles et les améliorations.
+Après l'analyse, vous devez générer une réponse **uniquement** sous forme de code HTML complet et esthétique
+pour un e-mail de feedback. L'e-mail doit être très beau, professionnel et convivial.
+Si le code est impeccable, générez un HTML de validation. S'il y a des erreurs ou des suggestions, mentionnez-les clairement,
 en indiquant les lignes si possible, et proposez des corrections.
-- Le code HTML doit être complet (avec <html>, <body>, etc.) et utiliser des styles en ligne (CSS) 
+Le code HTML doit être complet (avec <html>, <body>, etc.) et utiliser des styles en ligne (CSS)
 pour garantir un bon affichage dans tous les clients de messagerie. Utilisez une palette de couleurs agréable (par exemple, bleu, vert, gris clair).
+Le sujet de l'email doit être inclus dans une balise <title> dans le <head> du HTML.
 
---- Diff à Analyser ---
+Diff :
 ${diff}
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", // Modèle rapide et efficace
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
 
-    let html_content = response.text.trim();
+    let htmlContent = response.text.trim();
     
     // Tentative d'extraction du bloc de code si l'IA l'a mis dans des balises markdown
-    if (html_content.startsWith("```html")) {
-        html_content = html_content.replace(/^```html\s*/, '').replace(/\s*```$/, '').trim();
+    if (htmlContent.startsWith("```html")) {
+        htmlContent = htmlContent.replace("```html", "").replace("```", "").trim();
     }
     
-    // Écrire le rapport HTML dans un fichier
-    fs.writeFileSync("ai_report.html", html_content, "utf8");
+    // Le rapport est maintenant un fichier HTML
+    fs.writeFileSync("ai_report.html", htmlContent, "utf8");
 
-    // Pour déterminer l'état de sortie, on cherche un indicateur de succès dans le HTML
-    // On considère que s'il y a le mot "Succès" ou "Impeccable" dans le HTML, c'est un succès.
-    // Sinon, on considère qu'il y a des problèmes.
-    const isSuccess = html_content.includes("Succès") || html_content.includes("impeccable");
+    // On cherche le titre dans le HTML pour déterminer le statut
+    // Si le titre contient "impeccable", "validé", "ok" ou similaire, on considère que c'est un succès.
+    const titleMatch = htmlContent.match(/<title>(.*?)<\/title>/i);
+    const title = titleMatch ? titleMatch[1] : "";
 
-    if (isSuccess) {
-      console.log("✅ IA: OK (Revue positive)");
+    if (title.toLowerCase().includes("impeccable") || title.toLowerCase().includes("validé") || title.toLowerCase().includes("ok")) {
+      console.log("✅ IA: OK - Revue de code impeccable.");
       process.exit(0);
     } else {
-      console.log("❌ IA: Problèmes/Suggestions détectés");
+      console.log("❌ IA: problèmes détectés - Revue de code requise.");
+      // On affiche le contenu pour le débogage si l'utilisateur exécute le script en local
+      console.log("\n--- Contenu HTML du rapport ---\n" + htmlContent + "\n-------------------------------\n");
       process.exit(1);
     }
   } catch (err) {
     console.error("Erreur lors de l'appel Gemini :", err);
-    // En cas d'erreur API, on crée un rapport d'erreur pour l'email
-    const errorHtml = `
-      <html><body>
-        <h1 style="color: red;">Erreur de Communication avec l'IA</h1>
-        <p>Impossible d'obtenir la revue de code. Veuillez vérifier la clé API et la configuration.</p>
-        <p>Détails de l'erreur: ${err.message}</p>
-      </body></html>
-    `;
-    fs.writeFileSync("ai_report.html", errorHtml, "utf8");
+    fs.writeFileSync("ai_report.html", `<h1>Erreur de communication avec l'API IA.</h1><p>${err.message}</p>`, "utf8");
     process.exit(1);
   }
 };
 
 main();
+

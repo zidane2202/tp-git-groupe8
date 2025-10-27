@@ -1,108 +1,130 @@
 import 'dotenv/config';
 import nodemailer from "nodemailer";
-import { execSync } from "child_process";
 import fs from "fs";
+import { execSync } from "child_process";
 
-// Le chemin du rapport est maintenant le premier argument passé au script
-const REPORT_PATH = process.argv[2]; 
-
-// Fonction utilitaire pour lire le titre du HTML
-function extractSubjectFromHtml(htmlContent) {
-  const titleMatch = htmlContent.match(/<title>(.*?)<\/title>/i);
-  return titleMatch ? titleMatch[1].trim() : "Revue de Code Automatisée";
-}
-
-// Version corrigée : tout est exécuté dans une IIFE async pour permettre l'utilisation d'`await` en toute sécurité.
+// Exécuté dans une IIFE async
 (async () => {
-  // --- 1️⃣ Récupération des adresses e-mails ---
+  // --- 1️⃣ Récupération de l'état du push ---
+  const status = process.argv[2] || "success";
+
+  // --- 2️⃣ Récupération des adresses e-mails ---
   let toEmails;
   if (process.env.NOTIFY_EMAILS) {
     toEmails = process.env.NOTIFY_EMAILS;
   } else {
     try {
-      // Tente de récupérer l'e-mail de l'utilisateur Git
       toEmails = execSync("git config user.email").toString().trim();
-      process.stderr.write(`📧 Adresse Git détectée : ${toEmails}\n`);
+      console.log("📧 Adresse Git détectée :", toEmails);
     } catch {
-      // Fallback si la configuration Git n'est pas disponible
-      toEmails = "default@example.com"; 
-      process.stderr.write(`⚠️ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut : ${toEmails}\n`);
+      toEmails = "pythiemorne22@gmail.com";
+      console.log("⚠️ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
     }
   }
 
-  // --- 2️⃣ Lecture du rapport HTML généré par analyseAI.js ---
-  let htmlBody = "";
-  let subject = "Revue de Code Automatisée - Statut Inconnu";
-  
-  if (!REPORT_PATH) {
-    subject = "❌ Erreur Critique - Chemin du Rapport Manquant";
-    htmlBody = `
-      <html>
-      <head><title>${subject}</title></head>
-      <body style="font-family: sans-serif; color: #333; padding: 20px;">
-        <h1 style="color: #d9534f;">Erreur Critique</h1>
-        <p>Le chemin du rapport d'analyse de code n'a pas été fourni au script <code>sendMail.js</code>.</p>
-        <p><strong>Veuillez vérifier votre script de hook Git :</strong> il doit capturer la sortie standard (stdout) de <code>analyseAI.js</code> et la passer en argument à <code>sendMail.js</code>.</p>
-        <p>Exemple de commande dans votre hook : <code>REPORT_PATH=$(node analyseAI.js) && node sendMail.js "$REPORT_PATH"</code></p>
-      </body>
-      </html>
-    `;
-    process.stderr.write(`❌ Erreur critique : Le chemin du rapport AI n'a pas été fourni en argument.\n`);
-  } else {
-    try {
-      // Utilisation du chemin fourni en argument
-      htmlBody = fs.readFileSync(REPORT_PATH, "utf8");
-      subject = extractSubjectFromHtml(htmlBody);
-      process.stderr.write(`✅ Rapport HTML lu depuis ${REPORT_PATH}. Sujet: ${subject}\n`);
-    } catch (err) {
-      process.stderr.write(`❌ Erreur de lecture du rapport ${REPORT_PATH}: ${err.message}\n`);
-      // Génération d'un corps HTML d'erreur
-      subject = "❌ Erreur Critique - Revue de Code Automatisée";
-      htmlBody = `
-        <html>
-        <head><title>${subject}</title></head>
-        <body style="font-family: sans-serif; color: #333; padding: 20px;">
-          <h1 style="color: #d9534f;">Erreur Critique</h1>
-          <p>Le rapport d'analyse de code (<code>${REPORT_PATH}</code>) n'a pas pu être lu ou généré.</p>
-          <p>Veuillez vérifier l'exécution du script <code>analyseAI.js</code>. Erreur système :</p>
-          <pre style="background-color: #f9f9f9; padding: 10px; border: 1px solid #eee;">${err.message}</pre>
-        </body>
-        </html>
-      `;
+  // --- 3️⃣ Lecture du rapport IA ---
+  let htmlContent;
+  try {
+    htmlContent = fs.readFileSync("ai_report.txt", "utf8");
+    if (!htmlContent.includes("<html")) {
+      console.warn("⚠️ Contenu non HTML détecté, utilisation d'un message par défaut.");
+      htmlContent = `
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
+    h1 { color: ${status === "fail" ? "#d32f2f" : "#1a73e8"}; }
+    .section { margin-bottom: 20px; }
+    .footer { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Revue de Code - ${status === "fail" ? "Erreurs Détectées" : "Analyse Réussie"}</h1>
+    <p>Bonjour l'équipe,</p>
+    <div class="section">
+      <h2>Problème détecté</h2>
+      <p>Aucun rapport d'analyse valide n'a pu être généré. Veuillez vérifier votre push ou contacter l'équipe pour assistance.</p>
+    </div>
+    <p class="footer">Cordialement, Votre Expert en Revue de Code</p>
+  </div>
+</body>
+</html>`;
     }
+  } catch (err) {
+    console.error("❌ Erreur lors de la lecture de ai_report.txt :", err);
+    htmlContent = `
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
+    h1 { color: #d32f2f; }
+    .section { margin-bottom: 20px; }
+    .footer { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Revue de Code - Erreur Critique</h1>
+    <p>Bonjour l'équipe,</p>
+    <div class="section">
+      <h2>Erreur détectée</h2>
+      <p>Une erreur s'est produite lors de la lecture du rapport : ${err.message}</p>
+    </div>
+    <div class="section">
+      <h2>Suggestions</h2>
+      <p>Veuillez vérifier que le fichier ai_report.txt existe et est accessible.</p>
+      <p>Contactez l'équipe pour assistance si le problème persiste.</p>
+    </div>
+    <p class="footer">Cordialement, Votre Expert en Revue de Code</p>
+  </div>
+</body>
+</html>`;
   }
 
-  // --- 3️⃣ Configuration du transporteur SMTP ---
+  // --- 4️⃣ Configuration du sujet du mail ---
+  const subject = status === "fail" ? "❌ Push bloqué - Analyse IA" : "✅ Push validé - Analyse IA";
+
+  // --- 5️⃣ Configuration du transporteur SMTP ---
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
     port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-    secure: process.env.SMTP_SECURE === "true", // Utilisez 'true' pour le port 465, 'false' pour 587 (TLS)
+    secure: process.env.SMTP_SECURE === "true",
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
   });
 
-  // --- 4️⃣ Préparation et envoi du mail ---
+  // --- 6️⃣ Vérification de la connexion SMTP ---
+  try {
+    await transporter.verify();
+    console.log("✅ Connexion SMTP vérifiée");
+  } catch (error) {
+    console.error("❌ Erreur de vérification SMTP :", error);
+    console.log("Rapport généré :", htmlContent);
+    process.exit(1);
+  }
+
+  // --- 7️⃣ Préparation et envoi du mail ---
   const mailOptions = {
     from: `Git AI Bot <${process.env.SMTP_USER || toEmails}>`,
     to: toEmails,
-    subject: subject,
-    // On envoie le contenu du rapport comme corps HTML de l'e-mail
-    html: htmlBody,
-    // Le champ 'text' est important pour les clients qui ne supportent pas le HTML
-    text: `Veuillez ouvrir cet e-mail dans un client supportant le HTML pour voir la revue de code complète. Sujet: ${subject}`,
+    subject,
+    html: htmlContent,
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    process.stderr.write(`📧 Mail de revue de code envoyé à ${toEmails}\n`);
+    console.log("📧 Mail envoyé à", toEmails);
   } catch (err) {
-    process.stderr.write(`❌ Erreur envoi mail : ${err.message}\n`);
-    // Afficher le corps HTML en cas d'échec d'envoi pour le débogage
-    process.stderr.write("\n--- Contenu HTML non envoyé (pour débogage) ---\n" + htmlBody + "\n----------------------------------------------------\n");
-    process.exit(1); // Sortie en erreur si l'envoi échoue
+    console.error("❌ Erreur envoi mail :", err);
+    console.log("Rapport généré :", htmlContent);
+    process.exit(1);
   }
-
 })();
-

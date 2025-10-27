@@ -23,7 +23,7 @@ import { execSync } from "child_process";
   }
 
   // --- 3️⃣ Génération du mail via Gemini (Google GenAI) ---
-  const ai = new GoogleGenAI({});
+  const ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
   async function generateMail(diffText) {
     const prompt = `
@@ -82,14 +82,14 @@ Objet : <objet du mail>
     port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
     secure: process.env.SMTP_SECURE === "true",
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: process.env.SENDER_EMAIL,
+      pass: process.env.GMAIL_APP_PASSWORD,
     },
   });
 
   // --- 8️⃣ Préparation et envoi du mail ---
   const mailOptions = {
-    from: `Git AI Bot <${process.env.SMTP_USER || toEmails}>`,
+    from: `Git AI Bot <${process.env.SENDER_EMAIL || toEmails}>`,
     to: toEmails,
     subject,
     text: body,

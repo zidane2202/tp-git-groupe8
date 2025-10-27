@@ -2,9 +2,13 @@ import 'dotenv/config'; // charge automatiquement les variables depuis .env
 
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
+import path from "path"; // Importation de 'path'
 
 // Le client lit la clé API depuis la variable d'environnement GEMINI_API_KEY
 const ai = new GoogleGenAI({});
+
+// Définir le chemin absolu pour le rapport
+const REPORT_PATH = path.resolve(process.cwd(), "ai_report.html");
 
 const readStdin = async () => {
   return new Promise((resolve) => {
@@ -19,7 +23,8 @@ const main = async () => {
   const diff = await readStdin();
   if (!diff || diff.trim().length === 0) {
     // Si pas de diff, on écrit un rapport vide et on sort avec succès
-    fs.writeFileSync("ai_report.html", "<h1>Aucun changement à analyser.</h1>", "utf8");
+    fs.writeFileSync(REPORT_PATH, "<h1>Aucun changement à analyser.</h1>", "utf8");
+    console.log("✅ IA: OK - Aucun diff à analyser.");
     process.exit(0);
   }
 
@@ -52,7 +57,7 @@ ${diff}
     }
     
     // Le rapport est maintenant un fichier HTML
-    fs.writeFileSync("ai_report.html", htmlContent, "utf8");
+    fs.writeFileSync(REPORT_PATH, htmlContent, "utf8");
 
     // On cherche le titre dans le HTML pour déterminer le statut
     // Si le titre contient "impeccable", "validé", "ok" ou similaire, on considère que c'est un succès.
@@ -70,7 +75,7 @@ ${diff}
     }
   } catch (err) {
     console.error("Erreur lors de l'appel Gemini :", err);
-    fs.writeFileSync("ai_report.html", `<h1>Erreur de communication avec l'API IA.</h1><p>${err.message}</p>`, "utf8");
+    fs.writeFileSync(REPORT_PATH, `<h1>Erreur de communication avec l'API IA.</h1><p>${err.message}</p>`, "utf8");
     process.exit(1);
   }
 };

@@ -28,7 +28,7 @@ def get_changed_files():
 
 def get_file_content(file_path, commit_hash=None):
     """Lit le contenu d'un fichier actuel ou à un commit précédent (max 200 lignes)."""
-    if file_path.startswith('.github/') or file_path.endswith(('.png', '.jpg', '.gif', '.bin')):
+    if file_path.startswith('.github/') or file_path.endswith(('.png', '.jpg', '.gif', '.bin', '.css', '.js')):
         return None
 
     try:

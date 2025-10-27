@@ -38,4 +38,4 @@ jobs:
         CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
         
         # Execute the Python script
-        python review_mailer.py "$COMMIT_AUTHOR_EMAIL" "$CHANGED_FILES"
+        python scripts/review_mailer.py "$COMMIT_AUTHOR_EMAIL" "$CHANGED_FILES"

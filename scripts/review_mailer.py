@@ -4,6 +4,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from google import genai
+from html.parser import HTMLParser
 
 # --- Configuration ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -20,28 +21,47 @@ RECIPIENT_EMAIL = sys.argv[1]
 raw_files = sys.argv[2]
 CHANGED_FILES = [f.strip() for f in raw_files.replace(',', ' ').split()]
 
+# --- Vérification syntaxe HTML ---
+class SyntaxChecker(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.errors = []
+
+    def error(self, message):
+        self.errors.append(message)
+
+def check_html_syntax(html_content):
+    checker = SyntaxChecker()
+    try:
+        checker.feed(html_content)
+    except Exception as e:
+        checker.errors.append(str(e))
+    return checker.errors
+
 # --- Fonctions d'aide ---
 def get_file_content(file_path):
+    """Lit uniquement les fichiers HTML et retourne leur contenu."""
+    if not file_path.endswith(".html"):
+        return None
     if not os.path.isfile(file_path):
         return f"--- Impossible de lire le fichier: {file_path} (fichier non trouvé) ---\n"
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            content = "".join(f.readlines()[:100])
-        return f"--- Contenu du fichier: {file_path} ---\n{content}\n"
+            content = "".join(f.readlines()[:200])
+        return content
     except Exception as e:
         return f"--- Impossible de lire le fichier: {file_path} (Erreur: {e}) ---\n"
 
 def generate_prompt(changed_files):
-    """Génère un prompt détaillé pour l'IA, avec style dynamique pour les mails."""
+    """Génère le prompt original pour l'IA."""
     files_content = ""
     for file in changed_files:
-        # Ignorer fichiers binaires ou GitHub Actions
-        if file.startswith('.github/') or file.endswith(('.png', '.jpg', '.gif', '.bin')):
-            continue
-        files_content += get_file_content(file)
+        content = get_file_content(file)
+        if content:
+            files_content += f"--- Contenu du fichier: {file} ---\n{content}\n"
 
     prompt = f"""
-Vous êtes un expert en revue de code. Analysez les fichiers suivants et générez un email complet **uniquement en HTML**, sans aucune syntaxe Markdown (pas de ##, ###, ``` ou autres).
+Vous êtes un expert en revue de code. Analysez les fichiers suivants et générez un email complet **uniquement en HTML**, sans aucune syntaxe Markdown.
 
 Fichiers à analyser :
 {', '.join(changed_files)}
@@ -73,7 +93,6 @@ def get_ai_review(prompt):
             contents=prompt
         )
         html_content = response.text.strip()
-        # Nettoyage si l'IA ajoute du ```html par défaut
         if html_content.startswith("```html"):
             html_content = html_content.strip("```html").strip("```").strip()
         return html_content
@@ -105,19 +124,32 @@ def send_email(recipient, subject, html_body):
 print(f"Début de l'analyse pour le push de: {RECIPIENT_EMAIL}")
 print(f"Fichiers modifiés: {', '.join(CHANGED_FILES)}")
 
+# Vérification de la syntaxe HTML locale
+html_errors_summary = ""
+for file in CHANGED_FILES:
+    content = get_file_content(file)
+    if content:
+        errors = check_html_syntax(content)
+        if errors:
+            html_errors_summary += f"<h3>Erreurs de syntaxe détectées dans {file}</h3><ul>"
+            for err in errors:
+                html_errors_summary += f"<li>{err}</li>"
+            html_errors_summary += "</ul><hr>"
+
+# Génération du prompt pour l'IA
 review_prompt = generate_prompt(CHANGED_FILES)
 html_review = get_ai_review(review_prompt)
 
-# Détecter si des erreurs existent dans la réponse de l'IA
-all_errors = []
-if "Erreurs détectées" in html_review:
+# Combiner les erreurs locales et le rapport IA
+if html_errors_summary:
+    html_review = html_errors_summary + html_review
     exit_code = 1
     mail_subject = "⚠️ Revue de Code - Erreurs détectées"
 else:
     exit_code = 0
     mail_subject = "✅ Revue de Code - Code Validé"
 
-# Envoyer le mail
+# Envoi du mail
 send_email(RECIPIENT_EMAIL, mail_subject, html_review)
 
 # Faire échouer le push si des erreurs détectées

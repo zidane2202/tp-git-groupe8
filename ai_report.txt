@@ -1,1 +1,1 @@
-Erreurs linters détectées
+Aucun diff à analyser.

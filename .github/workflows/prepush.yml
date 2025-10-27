@@ -1,42 +1,48 @@
-name: 🤖 Code Review & Mailer
+name: 🤖 Code Review and Notification
 
 on:
   push:
     branches:
-      - develop  # ou main selon ton cas
+      - develop  # <-- tu peux changer en main si nécessaire
 
 jobs:
   review:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
+    # 1️⃣ Récupération du code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2  # pour comparer le commit précédent
 
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
+    # 2️⃣ Installation de Python
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
 
-      - name: 📦 Install dependencies
-        run: pip install google-genai
+    # 3️⃣ Installation des dépendances
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
 
-      - name: 🔍 Get committer email and changed files
-        id: changes
-        run: |
-          COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
-          echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
-          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+    # 4️⃣ Détection de l’auteur du commit et des fichiers modifiés
+    - name: 🔍 Get committer email and changed files
+      id: changes
+      run: |
+        COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+        echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
+        echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
-      - name: 🤖 Run AI Review and Send Email
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          RECIPIENT_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
-          CHANGED_FILES: ${{ env.CHANGED_FILES }}
-        run: |
-          python scripts/review_mailer.py "$RECIPIENT_EMAIL" "$CHANGED_FILES"
+    # 5️⃣ Revue IA et envoi de mail
+    - name: 🤖 Run AI Review and Send Email
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        RECIPIENT_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
+        CHANGED_FILES: ${{ env.CHANGED_FILES }}
+      run: |
+        python scripts/review_mailer.py "$RECIPIENT_EMAIL" "$CHANGED_FILES"

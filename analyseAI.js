@@ -1,18 +1,22 @@
-import 'dotenv/config';
+import 'dotenv/config'; // charge automatiquement les variables depuis .env
+
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
-import { execSync } from "child_process";
 
+// Le client lit la clé API depuis la variable d'environnement GEMINI_API_KEY
 const ai = new GoogleGenAI({});
 
-const main = async () => {
-  let diff = "";
-  try {
-    diff = execSync("git diff --cached", { encoding: "utf8" });
-  } catch (e) {
-    console.error("❌ Impossible de lire le diff :", e);
-  }
+const readStdin = async () => {
+  return new Promise((resolve) => {
+    let data = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", chunk => data += chunk);
+    process.stdin.on("end", () => resolve(data));
+  });
+};
 
+const main = async () => {
+  const diff = await readStdin();
   if (!diff || diff.trim().length === 0) {
     fs.writeFileSync("ai_report.txt", "Aucun diff à analyser.", "utf8");
     process.exit(0);
@@ -20,11 +24,16 @@ const main = async () => {
 
   const prompt = `
 Tu es un assistant expert en analyse de code HTML, CSS et JavaScript.
-Analyse ce diff et détecte les erreurs ou risques de sécurité.
-Si tout est OK, écris "OK" sur la première ligne.
+Tu vas analyser le diff ci-dessous (format git diff --cached).
+1) Indique si le code contient des erreurs de syntaxe, bugs évidents, ou risques de sécurité.
+2) Fournis un rapport clair : fichiers concernés, lignes (si possible), description du problème.
+3) Rédige ensuite un e-mail professionnel à envoyer au développeur :
+   - objet (ligne)
+   - corps du message (explication, gravité, suggestion de correction, liens utiles si pertinent)
+Si tout est OK, écris "OK" sur la première ligne puis un e-mail de validation.
 Diff :
 ${diff}
-`;
+  `;
 
   try {
     const response = await ai.models.generateContent({
@@ -44,7 +53,7 @@ ${diff}
       process.exit(1);
     }
   } catch (err) {
-    console.error("Erreur IA :", err);
+    console.error("Erreur lors de l'appel Gemini :", err);
     fs.writeFileSync("ai_report.txt", "Erreur de communication avec l'API IA.", "utf8");
     process.exit(1);
   }

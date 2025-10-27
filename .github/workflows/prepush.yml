@@ -1,53 +1,42 @@
-name: Code Review and Notification
+name: 🤖 Code Review & Mailer
 
 on:
-  push:  # fonctionne sur tous les pushes, toutes branches
+  push:
     branches:
-      - '**'
+      - develop  # ou main selon ton cas
 
 jobs:
   review:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 2  # nécessaire pour git diff
+      - name: 🧩 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
+      - name: 📦 Install dependencies
+        run: pip install google-genai
 
-    - name: 🔍 Get committer email and changed files
-      id: changes
-      run: |
-        COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
-        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
-        echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
-        echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+      - name: 🔍 Get committer email and changed files
+        id: changes
+        run: |
+          COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          echo "COMMIT_AUTHOR_EMAIL=$COMMIT_AUTHOR_EMAIL" >> $GITHUB_ENV
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
-    - name: 🐞 Debug variables and changed files
-      # Les secrets ne peuvent pas être affichés directement pour des raisons de sécurité et de syntaxe GitHub Actions
-      run: |
-        echo "RECIPIENT_EMAIL=$COMMIT_AUTHOR_EMAIL"
-        echo "CHANGED_FILES=$CHANGED_FILES"
-        echo "Contenu des fichiers modifiés :"
-        for file in $CHANGED_FILES; do
-          echo "--- $file ---"
-          head -20 "$file" || echo "Fichier introuvable : $file"
-        done
-
-    - name: 🤖 Run AI Review and Send Email
-      env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        SMTP_USER: ${{ secrets.SMTP_USER }}
-        SMTP_PASS: ${{ secrets.SMTP_PASS }}
-        RECIPIENT_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
-        CHANGED_FILES: ${{ env.CHANGED_FILES }}
-      run: |
-        python scripts/review_mailer.py "$RECIPIENT_EMAIL" "$CHANGED_FILES"
+      - name: 🤖 Run AI Review and Send Email
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          RECIPIENT_EMAIL: ${{ env.COMMIT_AUTHOR_EMAIL }}
+          CHANGED_FILES: ${{ env.CHANGED_FILES }}
+        run: |
+          python scripts/review_mailer.py "$RECIPIENT_EMAIL" "$CHANGED_FILES"

@@ -2,7 +2,11 @@
 
 # --- Hook pre-push pour bloquer le push si des erreurs détectées ---
 
-SCRIPT_PATH="scripts/review_mailer.py"
+# Racine du dépôt
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# Chemin complet du script
+SCRIPT_PATH="$REPO_ROOT/scripts/review_mailer.py"
 
 # Email de l'auteur du commit
 RECIPIENT_EMAIL=$(git log -1 --pretty=format:'%ae')
@@ -10,8 +14,18 @@ RECIPIENT_EMAIL=$(git log -1 --pretty=format:'%ae')
 # Tous les fichiers staged pour le push
 CHANGED_FILES=$(git diff --cached --name-only | paste -sd "," -)
 
+# Vérifier si Python existe
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
+    echo "⚠️ Python non trouvé. La vérification locale est ignorée."
+    exit 0
+fi
+
 # Exécution du script Python
-python3 "$SCRIPT_PATH" "$RECIPIENT_EMAIL" "$CHANGED_FILES"
+$PYTHON_CMD "$SCRIPT_PATH" "$RECIPIENT_EMAIL" "$CHANGED_FILES"
 
 EXIT_CODE=$?
 if [ $EXIT_CODE -ne 0 ]; then

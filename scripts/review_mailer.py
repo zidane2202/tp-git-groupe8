@@ -15,10 +15,15 @@ if len(sys.argv) < 3:
     sys.exit(1)
 
 RECIPIENT_EMAIL = sys.argv[1]
-CHANGED_FILES = sys.argv[2].split()
+
+# Supporte fichiers séparés par des virgules ou espaces
+raw_files = sys.argv[2]
+CHANGED_FILES = [f.strip() for f in raw_files.replace(',', ' ').split()]
 
 # --- Fonctions d'aide ---
 def get_file_content(file_path):
+    if not os.path.isfile(file_path):
+        return f"--- Impossible de lire le fichier: {file_path} (fichier non trouvé) ---\n"
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = "".join(f.readlines()[:100])
@@ -30,12 +35,13 @@ def generate_prompt(changed_files):
     """Génère un prompt détaillé pour l'IA, avec style dynamique pour les mails."""
     files_content = ""
     for file in changed_files:
+        # Ignorer fichiers binaires ou GitHub Actions
         if file.startswith('.github/') or file.endswith(('.png', '.jpg', '.gif', '.bin')):
             continue
         files_content += get_file_content(file)
 
     prompt = f"""
-Vous êtes un expert en revue de code. Analysez les fichiers suivants et générez un email complet en HTML pour le développeur :
+Vous êtes un expert en revue de code. Analysez les fichiers suivants et générez un email complet **uniquement en HTML**, sans aucune syntaxe Markdown (pas de ##, ###, ``` ou autres).
 
 Fichiers à analyser :
 {', '.join(changed_files)}
@@ -55,6 +61,7 @@ Contraintes du mail HTML :
 - Inclure extraits de code pertinents, erreurs et corrections
 - Si aucun problème n'est détecté, féliciter le développeur et proposer des améliorations optionnelles
 - Toujours produire un HTML complet (<html>, <body>, etc.)
+- **IMPORTANT** : Ne générez **aucun Markdown**.
 """
     return prompt
 
@@ -66,6 +73,7 @@ def get_ai_review(prompt):
             contents=prompt
         )
         html_content = response.text.strip()
+        # Nettoyage si l'IA ajoute du ```html par défaut
         if html_content.startswith("```html"):
             html_content = html_content.strip("```html").strip("```").strip()
         return html_content
@@ -101,7 +109,6 @@ review_prompt = generate_prompt(CHANGED_FILES)
 html_review = get_ai_review(review_prompt)
 
 # Détecter si des erreurs existent dans la réponse de l'IA
-# Ici on regarde si le texte contient le mot "Erreurs détectées"
 all_errors = []
 if "Erreurs détectées" in html_review:
     exit_code = 1
@@ -110,7 +117,7 @@ else:
     exit_code = 0
     mail_subject = "✅ Revue de Code - Code Validé"
 
-# Envoyer le mail (toujours)
+# Envoyer le mail
 send_email(RECIPIENT_EMAIL, mail_subject, html_review)
 
 # Faire échouer le push si des erreurs détectées

@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"name": "tp-git-groupe8",
+			"path": "."
+		},
+		{
+			"name": "css",
+			"path": "../Downloads/learner-1.0.0/learner-1.0.0/css"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "tp-git-groupe8"
+	}
+}

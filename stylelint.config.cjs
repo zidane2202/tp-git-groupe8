@@ -25,13 +25,8 @@ module.exports = {
     "selector-pseudo-element-colon-notation": null
     },
   ignoreFiles: [
-    "fonts/",                  // Ignorer tous les fichiers fonts
-    "css/vendor/",             // Ignorer tous les fichiers vendors
-    "css/aos.css",
-    "css/bootstrap-datepicker.css",
-    "css/style.css",
-    "css/_mixins.css",
-    "css/_site-blocks.css",
-    
+    "fonts/**/*",             // Ignorer tous les fichiers dans fonts et ses sous-dossiers
+    "css/**/*",              // Ignorer tous les fichiers dans css et ses sous-dossiers
+    "**/*.css"               // Ignorer tous les fichiers CSS partout dans le projet
   ]
 };

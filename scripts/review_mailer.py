@@ -4,36 +4,58 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from google import genai
+import subprocess
 
 # --- Configuration ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
 
-if len(sys.argv) < 3:
-    print("Erreur: L'email du destinataire et la liste des fichiers modifiés sont requis.")
+if len(sys.argv) < 2:
+    print("Erreur: L'email du destinataire est requis.")
     sys.exit(1)
 
 RECIPIENT_EMAIL = sys.argv[1]
-CHANGED_FILES = sys.argv[2].split()
 
 # --- Fonctions ---
-def get_file_content(file_path):
-    """Lit le contenu d'un fichier (jusqu'à 200 lignes)."""
+def get_changed_files():
+    """Récupère la liste des fichiers modifiés dans le dernier commit."""
+    result = subprocess.check_output(
+        ['git', 'diff', '--name-only', 'HEAD~1', 'HEAD'],
+        text=True
+    )
+    return [f for f in result.strip().splitlines() if f]
+
+def get_file_content(file_path, commit_hash=None):
+    """Lit le contenu d'un fichier actuel ou à un commit précédent (max 200 lignes)."""
+    if file_path.startswith('.github/') or file_path.endswith(('.png', '.jpg', '.gif', '.bin')):
+        return None
+
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = "".join(f.readlines()[:200])
-        return f"--- Contenu de {file_path} ---\n{content}\n"
+        if commit_hash:
+            content = subprocess.check_output(
+                ['git', 'show', f'{commit_hash}:{file_path}'],
+                text=True, errors='ignore'
+            )
+        else:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = "".join(f.readlines()[:200])
+        return f"--- Contenu de {file_path}" + (f" à {commit_hash}" if commit_hash else "") + f" ---\n{content}\n"
     except Exception as e:
-        return f"--- Impossible de lire {file_path}: {e} ---\n"
+        return f"--- Impossible de lire {file_path}" + (f" à {commit_hash}" if commit_hash else "") + f": {e} ---\n"
 
 def generate_prompt(changed_files):
     """Crée un prompt pour l'IA afin de générer un email HTML complet."""
     files_content = ""
     for file in changed_files:
-        if file.startswith('.github/') or file.endswith(('.png', '.jpg', '.gif', '.bin')):
-            continue
-        files_content += get_file_content(file)
+        # Version actuelle
+        content_current = get_file_content(file)
+        if content_current:
+            files_content += content_current
+        # Version précédente (HEAD~1)
+        content_prev = get_file_content(file, 'HEAD~1')
+        if content_prev:
+            files_content += content_prev
 
     prompt = f"""
 Vous êtes un expert en revue de code. Analysez les fichiers suivants et identifiez toutes les erreurs HTML, CSS et JavaScript, 
@@ -102,6 +124,7 @@ def send_email(recipient, subject, html_body):
         print("\n----------------------------------------------------\n")
 
 # --- Logique principale ---
+CHANGED_FILES = get_changed_files()
 print(f"Début de l'analyse pour le push de: {RECIPIENT_EMAIL}")
 print(f"Fichiers modifiés: {', '.join(CHANGED_FILES)}")
 

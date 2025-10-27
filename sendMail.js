@@ -1,116 +1,106 @@
 import 'dotenv/config';
 import nodemailer from "nodemailer";
 import fs from "fs";
-import { execSync } from "child_process";
+import path from "path";
 
-// Exécuté dans une IIFE async pour une gestion propre des promesses
-(async () => {
-  // --- 1️⃣ Récupération de l'état du push ---
-  const status = process.argv[2] || "success";
+// --- 1️⃣ Configuration ---
+const REPORT_FILE = path.join(process.cwd(), "ai_report.txt");
+const DEFAULT_SUBJECT = "Revue de Code Automatisée";
 
-  // --- 2️⃣ Récupération des adresses e-mails ---
-  let toEmails;
-  if (process.env.NOTIFY_EMAILS) {
-    toEmails = process.env.NOTIFY_EMAILS;
-  } else {
+// --- 2️⃣ Fonctions d'aide ---
+
+/**
+ * Lit le rapport de l'IA, extrait le sujet et le corps HTML.
+ * @returns {{subject: string, htmlBody: string}} Le sujet et le corps HTML de l'e-mail.
+ */
+const parseAiReport = () => {
     try {
-      toEmails = execSync("git config user.email").toString().trim();
-      console.log("📧 Adresse Git détectée :", toEmails);
-    } catch {
-      toEmails = "pythiemorne22@gmail.com"; // Adresse par défaut
-      console.log("⚠️ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
-    }
-  }
+        const reportContent = fs.readFileSync(REPORT_FILE, "utf8");
+        
+        // Le sujet est la première ligne commençant par "Sujet : "
+        const subjectMatch = reportContent.match(/^Sujet\s*:\s*(.+)/im);
+        let subject = subjectMatch ? subjectMatch[1].trim() : DEFAULT_SUBJECT;
 
-  // --- 3️⃣ Lecture du rapport IA généré par analyseAI.js ---
-  let htmlContent;
-  try {
-    htmlContent = fs.readFileSync("ai_report.txt", "utf8");
-    if (!htmlContent.includes("<html")) {
-      console.warn("⚠️ Contenu non HTML détecté, utilisation d'un message par défaut.");
-      htmlContent = `
-<html>
+        // Le corps HTML est le reste du contenu après le sujet (ou tout le contenu si pas de sujet)
+        let htmlBody = reportContent;
+        if (subjectMatch) {
+            // Supprimer la ligne du sujet du corps du message
+            htmlBody = reportContent.replace(subjectMatch[0], "").trim();
+        }
+
+        // Si le corps HTML n'est pas un document HTML complet, l'envelopper pour assurer le formatage
+        if (!htmlBody.match(/<html/i)) {
+            htmlBody = `<!DOCTYPE html>
+<html lang="fr">
 <head>
-  <style>
-    body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
-    h1 { color: ${status === "fail" ? "#d32f2f" : "#1a73e8"}; }
-    .section { margin-bottom: 20px; }
-    .footer { font-size: 12px; color: #666; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${subject}</title>
 </head>
 <body>
-  <div class="container">
-    <h1>Revue de Code Automatisée - ${status === "fail" ? "Erreurs Détectées" : "Analyse Réussie"}</h1>
-    <p>Bonjour,</p>
-    <div class="section">
-      <h2>Problème détecté</h2>
-      <p>Aucun rapport d'analyse valide n'a pu être généré. Veuillez vérifier votre push ou contacter l'équipe pour assistance.</p>
-    </div>
-    <p class="footer">Merci pour votre contribution ! L'équipe AI Bot</p>
-  </div>
+    ${htmlBody}
 </body>
 </html>`;
+        }
+
+        return { subject, htmlBody };
+
+    } catch (err) {
+        console.error("❌ Erreur lecture ou parsing du rapport IA :", err);
+        return { 
+            subject: `Erreur: ${DEFAULT_SUBJECT}`, 
+            htmlBody: `<h1>Erreur de Génération de Rapport</h1><p>Impossible de lire le rapport de l'IA (${REPORT_FILE}).</p><p>Détails: ${err.message}</p>`
+        };
     }
-  } catch (err) {
-    console.error("❌ Erreur lors de la lecture de ai_report.txt :", err);
-    htmlContent = `
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
-    h1 { color: #d32f2f; }
-    .section { margin-bottom: 20px; }
-    .footer { font-size: 12px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Revue de Code Automatisée - Erreur Critique</h1>
-    <p>Bonjour,</p>
-    <div class="section">
-      <h2>Erreur détectée</h2>
-      <p>Une erreur s'est produite lors de la lecture du rapport : ${err.message}</p>
-    </div>
-    <div class="section">
-      <h2>Suggestions</h2>
-      <p>Veuillez vérifier que le fichier ai_report.txt existe et est accessible.</p>
-      <p>Contactez l'équipe pour assistance si le problème persiste.</p>
-    </div>
-    <p class="footer">Merci pour votre contribution ! L'équipe AI Bot</p>
-  </div>
-</body>
-</html>`;
+}
+
+// --- 3️⃣ Logique principale ---
+
+(async () => {
+  
+  // --- A. Récupération des adresses e-mails ---
+  // On utilise l'adresse de l'utilisateur SMTP comme expéditeur par défaut
+  const senderEmail = process.env.SMTP_USER;
+  
+  // Le destinataire est le premier argument passé au script
+  const toEmails = process.argv[2] || process.env.NOTIFY_EMAILS;
+
+  if (!toEmails) {
+      console.error("Erreur: Adresse e-mail du destinataire non spécifiée.");
+      process.exit(1);
   }
 
-  // --- 4️⃣ Configuration du sujet du mail ---
-  const subject = status === "fail" ? "❌ Push bloqué - Analyse IA" : "✅ Push validé - Analyse IA";
-
-  // --- 5️⃣ Configuration du transporteur SMTP ---
+  // --- B. Lecture et préparation du contenu ---
+  const { subject, htmlBody } = parseAiReport();
+  
+  // --- C. Configuration du transporteur SMTP ---
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
     port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-    secure: process.env.SMTP_SECURE === "true",
+    secure: process.env.SMTP_SECURE === "true" || (process.env.SMTP_PORT === "465"), // Utiliser SSL/TLS pour le port 465
     auth: {
-      user: process.env.SMTP_USER,
+      user: senderEmail,
       pass: process.env.SMTP_PASS,
     },
   });
 
-  // --- 6️⃣ Préparation et envoi du mail ---
+  // --- D. Préparation et envoi du mail ---
   const mailOptions = {
-    from: `Git AI Bot <${process.env.SMTP_USER || toEmails}>`,
+    from: `Git AI Bot <${senderEmail}>`,
     to: toEmails,
     subject,
-    html: htmlContent,
+    html: htmlBody, // Utilisation de 'html' au lieu de 'text'
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log("📧 Mail envoyé à", toEmails);
+    console.log(`✅ Mail envoyé à ${toEmails} avec le sujet: ${subject}`);
   } catch (err) {
     console.error("❌ Erreur envoi mail :", err);
+    console.log("\n--- Contenu HTML non envoyé (pour débogage) ---\n");
+    console.log(htmlBody);
+    console.log("\n----------------------------------------------------\n");
     process.exit(1);
   }
+  
 })();

@@ -1,22 +1,4 @@
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
-    h1 { color: #d32f2f; }
-    .section { margin-bottom: 20px; }
-    .code { background-color: #f1f3f4; padding: 10px; border-radius: 4px; font-family: monospace; }
-    .footer { font-size: 12px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Revue de Code Automatisée - Erreurs de Linters</h1>
-    <p>Bonjour,</p>
-    <div class="section">
-      <h2>Erreurs détectées</h2>
 
-<p><strong>HTMLHint (HTML) :</strong></p><pre class='code'>
    C:\Users\Hba\tp-git-groupe8\test.html
 [37m      L2 |[90m<html lang="fr" dir="ltr" lang="en"> <!-- Attribut lang dupliqué, valeurs contradictoires -->[39m
 [37m                                   ^ [31mDuplicate of attribute name [ lang ] was found. (attr-no-duplication)[39m
@@ -41,14 +23,4 @@
 [37m      L15 |[90m<BODY onload="eval(document.URL.split('?')[1])"> <!-- Failles XSS via eval() sur URL, très dangereux ...[39m
 [37m           ^ [31mTag must be paired, missing: [ </body> ], start tag match failed [ <BODY onload="eval(document.URL.split('?')[1])"> ] on line 15. (tag-pair)[39m
 
-Scanned 16 files, found 11 errors in 1 files (258 ms)</pre>
-
-    </div>
-    <div class="section">
-      <h2>Suggestions</h2>
-      <p>Veuillez corriger les erreurs signalées ci-dessus et réessayer le push.</p>
-    </div>
-    <p class="footer">Merci pour votre contribution ! L'équipe AI Bot</p>
-  </div>
-</body>
-</html>
+Scanned 16 files, found 11 errors in 1 files (258 ms)

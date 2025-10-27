@@ -3,7 +3,6 @@ import nodemailer from "nodemailer";
 import { GoogleGenAI } from "@google/genai";
 import { execSync } from "child_process";
 import fs from "fs";
-import path from "path";
 
 // Version corrigée : tout est exécuté dans une IIFE async pour permettre l'utilisation d'`await` en toute sécurité.
 (async () => {
@@ -56,6 +55,11 @@ import path from "path";
   }
 
   async function generateMail(diffText, changedFiles) {
+    // Vérifier si l'API key est configurée
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY non configurée dans les variables d'environnement");
+    }
+
     // Construire le contenu des fichiers HTML
     let filesContent = "";
     for (const file of changedFiles) {
@@ -92,12 +96,17 @@ Contraintes du mail HTML :
 - *IMPORTANT* : Ne générez *aucun Markdown*.
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+      });
 
-    return response.text;
+      return response.text;
+    } catch (apiError) {
+      console.error("❌ Erreur API Gemini:", apiError.message);
+      throw new Error(`Erreur API Gemini: ${apiError.message}`);
+    }
   }
 
   // --- 4️⃣ Lecture du diff et des fichiers modifiés ---
@@ -111,22 +120,72 @@ Contraintes du mail HTML :
   const changedFiles = getChangedFiles();
   console.log(`📁 Fichiers modifiés: ${changedFiles.join(', ')}`);
 
+  // --- Fonction pour générer un email de fallback ---
+  function generateFallbackEmail(status, changedFiles, diffText) {
+    const isSuccess = status === "success";
+    const titleColor = isSuccess ? "#27ae60" : "#e74c3c";
+    const titleIcon = isSuccess ? "✅" : "❌";
+    const titleText = isSuccess ? "Revue de Code - Code Validé" : "Revue de Code - Erreurs détectées";
+    
+    return `
+      <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px;">
+          <div style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h1 style="color: ${titleColor}; margin-bottom: 20px;">${titleIcon} ${titleText}</h1>
+            
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+              <h3 style="color: #495057; margin-top: 0;">📁 Fichiers modifiés</h3>
+              <ul style="color: #6c757d;">
+                ${changedFiles.length > 0 ? changedFiles.map(file => `<li>${file}</li>`).join('') : '<li>Aucun fichier modifié détecté</li>'}
+              </ul>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 20px 0;">
+
+            <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+              <h3 style="color: #1976d2; margin-top: 0;">🤖 Analyse IA</h3>
+              <p style="color: #333; margin-bottom: 0;">
+                ${isSuccess 
+                  ? "L'analyse IA n'a pas pu être effectuée, mais les linters ont validé votre code. Votre push a été autorisé avec succès !" 
+                  : "L'analyse IA n'a pas pu être effectuée, mais des erreurs ont été détectées par les linters. Veuillez corriger les problèmes avant de repousser."}
+              </p>
+            </div>
+
+            ${diffText !== "Aucun diff disponible." ? `
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 20px 0;">
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+              <h3 style="color: #495057; margin-top: 0;">📝 Diff Git</h3>
+              <pre style="background-color: #f1f3f4; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; color: #333;">${diffText.substring(0, 1000)}${diffText.length > 1000 ? '\n... (diff tronqué)' : ''}</pre>
+            </div>
+            ` : ''}
+
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 20px 0;">
+            
+            <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px;">
+              <h3 style="color: #856404; margin-top: 0;">⚠️ Note technique</h3>
+              <p style="color: #333; margin-bottom: 0;">
+                L'analyse IA n'a pas pu être effectuée en raison d'un problème de connexion ou de configuration API. 
+                Les vérifications des linters ont été effectuées avec succès.
+              </p>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px; color: #6c757d; font-size: 12px;">
+              <p>Email généré automatiquement par Git AI Bot</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
   // --- 5️⃣ Génération du contenu mail ---
   let aiMailContent;
   try {
     aiMailContent = await generateMail(diffText, changedFiles);
   } catch (err) {
     console.error("❌ Erreur génération mail IA :", err);
-    aiMailContent = `
-      <html>
-        <body style="font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px;">
-          <div style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <h1 style="color: #e74c3c;">❌ Erreur d'analyse IA</h1>
-            <p>Impossible de générer le contenu via l'IA. Erreur: ${err.message}</p>
-          </div>
-        </body>
-      </html>
-    `;
+    console.log("🔄 Génération d'un email de fallback...");
+    aiMailContent = generateFallbackEmail(status, changedFiles, diffText);
   }
 
   // --- 6️⃣ Préparation du sujet et du corps du mail ---

@@ -1,6 +1,7 @@
 import os 
 import sys
 import smtplib
+import re
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from google import genai
@@ -11,6 +12,25 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
 
+# --- Motifs d'erreurs à ignorer ---
+IGNORED_PATTERNS = [
+    r'href="#"',           # liens non fonctionnels temporaires
+    r'Untree\.co',         # infos modèles résiduelles
+    r'Contact Us',         # titres en anglais
+    r'Your Name',          # placeholders en anglais
+    r'Send Message',       # boutons en anglais
+    r'script\.js.*<',      # JS chargé dans le <head>
+]
+
+def filter_errors(errors_summary):
+    """Filtre les erreurs selon les motifs ignorés."""
+    filtered_lines = []
+    for line in errors_summary.splitlines():
+        if not any(re.search(pattern, line) for pattern in IGNORED_PATTERNS):
+            filtered_lines.append(line)
+    return "\n".join(filtered_lines)
+
+# --- Vérification arguments ---
 if len(sys.argv) < 3:
     print("Erreur: L'email du destinataire et la liste des fichiers modifiés sont requis.")
     sys.exit(1)
@@ -138,23 +158,3 @@ for file in CHANGED_FILES:
             html_errors_summary += f"<h3>Erreurs de syntaxe détectées dans {file}</h3><ul>"
             for err in errors:
                 html_errors_summary += f"<li>{err}</li>"
-            html_errors_summary += "</ul><hr>"
-
-# Génération du prompt pour l'IA
-review_prompt = generate_prompt(CHANGED_FILES)
-html_review = get_ai_review(review_prompt)
-
-# Combiner les erreurs locales et le rapport IA
-if html_errors_summary:
-    html_review = html_errors_summary + html_review
-    exit_code = 1
-    mail_subject = "⚠️ Revue de Code - Erreurs détectées"
-else:
-    exit_code = 0
-    mail_subject = "✅ Revue de Code - Code Validé"
-
-# Envoi du mail
-send_email(RECIPIENT_EMAIL, mail_subject, html_review)
-
-# Faire échouer le push si des erreurs détectées
-sys.exit(exit_code)

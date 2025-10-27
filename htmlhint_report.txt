@@ -1,26 +1,2 @@
 
-   C:\Users\Hba\tp-git-groupe8\test.html
-[37m      L2 |[90m<html lang="fr" dir="ltr" lang="en"> <!-- Attribut lang dupliqué, valeurs contradictoires -->[39m
-[37m                                   ^ [31mDuplicate of attribute name [ lang ] was found. (attr-no-duplication)[39m
-[37m      L3 |[90m<HEAD> <!-- Balise head en majuscules, non standard -->[39m
-[37m          ^ [31mThe html element name of [ HEAD ] must be in lowercase. (tagname-lowercase)[39m
-[37m      L5 |[90m    <TITLE>Page Horrible</title> <!-- Balise title en majuscules, mélange de casse -->[39m
-[37m              ^ [31mThe html element name of [ TITLE ] must be in lowercase. (tagname-lowercase)[39m
-[37m      L15 |[90m<BODY onload="eval(document.URL.split('?')[1])"> <!-- Failles XSS via eval() sur URL, très dangereux ...[39m
-[37m           ^ [31mThe html element name of [ BODY ] must be in lowercase. (tagname-lowercase)[39m
-[37m      L16 |[90m    <div id="main" class="main" id="main2"> <!-- Attribut id dupliqué, illégal -->[39m
-[37m                                          ^ [31mDuplicate of attribute name [ id ] was found. (attr-no-duplication)[39m
-[37m      L24 |[90m            <INPUT TYPE="submit" onclick="nonExistentFunction()"> <!-- Fonction inexistante, balise e...[39m
-[37m                       ^ [31mThe html element name of [ INPUT ] must be in lowercase. (tagname-lowercase)[39m
-[37m      L24 |[90m            <INPUT TYPE="submit" onclick="nonExistentFunction()"> <!-- Fonction inexistante, balise e...[39m
-[37m                             ^ [31mThe attribute name of [ TYPE ] must be in lowercase. (attr-lowercase)[39m
-[37m      L28 |[90m                <td>Cellule 1[39m
-[37m                           ^ [31mTag must be paired, missing: [ </td> ], start tag match failed [ <td> ] on line 28. (tag-pair)[39m
-[37m      L19 |[90m        <p>Paragraphe non fermé <!-- p non fermé -->[39m
-[37m                   ^ [31mTag must be paired, missing: [ </p></i></b></p> ], start tag match failed [ <p> ] on line 19. (tag-pair)[39m
-[37m      L46 |[90m        <p>© 2020 <!-- Symbole © mal utilisé, balise non fermée, année incorrecte -->[39m
-[37m                   ^ [31mTag must be paired, missing: [ </p> ], start tag match failed [ <p> ] on line 46. (tag-pair)[39m
-[37m      L15 |[90m<BODY onload="eval(document.URL.split('?')[1])"> <!-- Failles XSS via eval() sur URL, très dangereux ...[39m
-[37m           ^ [31mTag must be paired, missing: [ </body> ], start tag match failed [ <BODY onload="eval(document.URL.split('?')[1])"> ] on line 15. (tag-pair)[39m
-
-Scanned 16 files, found 11 errors in 1 files (266 ms)
+Scanned 16 files, no errors found (267 ms).

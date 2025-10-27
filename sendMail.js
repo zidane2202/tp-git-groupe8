@@ -1,120 +1,114 @@
 import 'dotenv/config';
-import nodemailer from "nodemailer";
-import fs from "fs";
-import { execSync } from "child_process";
+import nodemailer from 'nodemailer';
+import { execSync } from 'child_process';
+import fs from 'fs/promises';
 
+// Exécuté dans une IIFE async pour une gestion propre des opérations asynchrones
 (async () => {
-  const status = process.argv[2] || "success";
-  let toEmails;
-  if (process.env.NOTIFY_EMAILS) {
-    toEmails = process.env.NOTIFY_EMAILS;
-  } else {
-    try {
-      toEmails = execSync("git config user.email").toString().trim();
-      console.log("📧 Adresse Git détectée :", toEmails);
-    } catch {
-      toEmails = "pythiemorne22@gmail.com";
-      console.log("⚠️ Impossible de récupérer l'e-mail Git, utilisation de l'e-mail par défaut :", toEmails);
-    }
-  }
+  // --- 1️⃣ Configuration et validation des variables d'environnement ---
+  const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
+  const SMTP_USER = process.env.SMTP_USER;
+  const SMTP_PASS = process.env.SMTP_PASS;
 
-  let htmlContent;
-  try {
-    htmlContent = fs.readFileSync("ai_report.txt", "utf8");
-    if (!htmlContent.includes("<html")) {
-      console.warn("⚠️ Contenu non HTML détecté, utilisation d'un message par défaut.");
-      htmlContent = `
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
-    h1 { color: ${status === "fail" ? "#d32f2f" : "#1a73e8"}; }
-    .section { margin-bottom: 20px; }
-    .footer { font-size: 12px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Revue de Code - ${status === "fail" ? "Erreurs Détectées" : "Analyse Réussie"}</h1>
-    <p>Bonjour l'équipe,</p>
-    <div class="section">
-      <h2>Problème détecté</h2>
-      <p>Aucun rapport d'analyse valide n'a pu être généré. Veuillez vérifier votre push ou contacter l'équipe pour assistance.</p>
-    </div>
-    <p class="footer">Cordialement, Votre Expert en Revue de Code</p>
-  </div>
-</body>
-</html>`;
-    }
-  } catch (err) {
-    console.error("❌ Erreur lors de la lecture de ai_report.txt :", err);
-    htmlContent = `
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; color: #333; background-color: #f4f4f9; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; }
-    h1 { color: #d32f2f; }
-    .section { margin-bottom: 20px; }
-    .footer { font-size: 12px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Revue de Code - Erreur Critique</h1>
-    <p>Bonjour l'équipe,</p>
-    <div class="section">
-      <h2>Erreur détectée</h2>
-      <p>Une erreur s'est produite lors de la lecture du rapport : ${err.message}</p>
-    </div>
-    <div class="section">
-      <h2>Suggestions</h2>
-      <p>Veuillez vérifier que le fichier ai_report.txt existe et est accessible.</p>
-      <p>Contactez l'équipe pour assistance si le problème persiste.</p>
-    </div>
-    <p class="footer">Cordialement, Votre Expert en Revue de Code</p>
-  </div>
-</body>
-</html>`;
-  }
-
-  const subject = status === "fail" ? "❌ Push bloqué - Analyse IA" : "✅ Push validé - Analyse IA";
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-  });
-
-  try {
-    await transporter.verify();
-    console.log("✅ Connexion SMTP vérifiée");
-  } catch (error) {
-    console.error("❌ Erreur de vérification SMTP :", error);
-    console.log("Rapport généré :", htmlContent);
+  if (!SMTP_USER || !SMTP_PASS) {
+    console.error('❌ Erreur: SMTP_USER ou SMTP_PASS non défini.');
     process.exit(1);
   }
 
+  // --- 2️⃣ Récupération des adresses e-mails ---
+  let toEmails;
+  if (process.env.NOTIFY_EMAILS) {
+    toEmails = process.env.NOTIFY_EMAILS.split(',').map((email) => email.trim());
+  } else {
+    try {
+      toEmails = [execSync('git config user.email').toString().trim()];
+      console.log('📧 Adresse Git détectée :', toEmails);
+    } catch {
+      toEmails = ['pythiemorne22@gmail.com'];
+      console.log('⚠️ Impossible de récupérer l’e-mail Git, utilisation de l’e-mail par défaut :', toEmails);
+    }
+  }
+
+  // --- 3️⃣ Lecture du diff Git ---
+  let diffText = 'Aucun diff disponible.';
+  try {
+    diffText = execSync('git diff --cached').toString();
+  } catch {
+    console.log('⚠️ Impossible de récupérer le diff Git.');
+  }
+
+  // --- 4️⃣ Lecture du rapport IA généré par AnalyseAI.js ---
+  let aiMailContent;
+  try {
+    aiMailContent = await fs.readFile('ai_report.txt', 'utf8');
+  } catch (err) {
+    console.error('❌ Erreur lors de la lecture de ai_report.txt :', err.message);
+    aiMailContent = `
+      <html>
+        <body style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
+          <h1 style="color: #d32f2f;">Erreur d'Analyse</h1>
+          <p>Impossible de récupérer le rapport d'analyse IA. Veuillez vérifier les logs.</p>
+        </body>
+      </html>`;
+  }
+
+  // --- 5️⃣ Extraction de l'objet et du corps de l'e-mail ---
+  let subject = 'Résultat de l’Analyse du Code';
+  let htmlBody = aiMailContent;
+
+  // Extraction de l'objet si présent dans le contenu IA
+  const objMatch = aiMailContent.match(/Objet\s*:\s*(.+)/i);
+  if (objMatch) {
+    subject = objMatch[1].trim();
+    // Supprimer la ligne "Objet : ..." du corps pour éviter de l'afficher dans l'e-mail
+    htmlBody = aiMailContent.replace(/Objet\s*:\s*.+\n?/, '');
+  }
+
+  // Vérification que le contenu est un HTML valide
+  if (!htmlBody.includes('<html') || !htmlBody.includes('<body')) {
+    htmlBody = `
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>${subject}</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; color: #333; padding: 20px; background-color: #f5f5f5;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h1 style="color: #1976d2;">Rapport d'Analyse de Code</h1>
+            <p>${htmlBody.replace(/\n/g, '<br>')}</p>
+            <p style="color: #388e3c;">Merci de vérifier les suggestions et d'effectuer les corrections nécessaires.</p>
+            <hr style="border: 0; border-top: 1px solid #eee;">
+            <p style="font-size: 12px; color: #777;">Ce message a été généré automatiquement par Git AI Bot.</p>
+          </div>
+        </body>
+      </html>`;
+  }
+
+  // --- 6️⃣ Configuration du transporteur SMTP ---
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465, // SSL pour le port 465, TLS pour le port 587
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+  });
+
+  // --- 7️⃣ Préparation et envoi du mail ---
   const mailOptions = {
-    from: `Git AI Bot <${process.env.SMTP_USER || toEmails}>`,
+    from: `Git AI Bot <${SMTP_USER}>`,
     to: toEmails,
     subject,
-    html: htmlContent,
+    html: htmlBody, // Utilisation de html au lieu de text pour un rendu correct
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log("📧 Mail envoyé à", toEmails);
+    console.log('📧 E-mail envoyé à', toEmails.join(', '));
   } catch (err) {
-    console.error("❌ Erreur envoi mail :", err);
-    console.log("Rapport généré :", htmlContent);
+    console.error('❌ Erreur lors de l’envoi de l’e-mail :', err.message);
     process.exit(1);
   }
 })();

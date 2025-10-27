@@ -4,7 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 
 // Le client lit la clé API depuis la variable d'environnement GEMINI_API_KEY
-const ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
+const ai = new GoogleGenAI({});
 
 const readStdin = async () => {
   return new Promise((resolve) => {

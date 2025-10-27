@@ -16,6 +16,8 @@ if len(sys.argv) < 3:
     sys.exit(1)
 
 RECIPIENT_EMAIL = sys.argv[1]
+
+# Supporte fichiers séparés par des virgules ou espaces
 raw_files = sys.argv[2]
 CHANGED_FILES = [f.strip() for f in raw_files.replace(',', ' ').split()]
 
@@ -38,7 +40,9 @@ def check_html_syntax(html_content):
         checker.errors.append(f"Ligne {line}, Col {col} : {str(e)}")
     return checker.errors
 
+# --- Fonctions d'aide ---
 def get_file_content(file_path):
+    """Lit uniquement les fichiers HTML et retourne leur contenu numéroté."""
     if not file_path.endswith(".html"):
         return None
     if not os.path.isfile(file_path):
@@ -46,12 +50,14 @@ def get_file_content(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()[:200]
+        # Ajouter numéro de ligne pour faciliter la lecture
         numbered_content = "\n".join([f"{i+1}: {line}" for i, line in enumerate(lines)])
         return numbered_content
     except Exception as e:
         return f"--- Impossible de lire le fichier: {file_path} (Erreur: {e}) ---\n"
 
 def generate_prompt(changed_files):
+    """Génère le prompt original pour l'IA."""
     files_content = ""
     for file in changed_files:
         content = get_file_content(file)
@@ -122,6 +128,7 @@ def send_email(recipient, subject, html_body):
 print(f"Début de l'analyse pour le push de: {RECIPIENT_EMAIL}")
 print(f"Fichiers modifiés: {', '.join(CHANGED_FILES)}")
 
+# Vérification de la syntaxe HTML locale
 html_errors_summary = ""
 for file in CHANGED_FILES:
     content = get_file_content(file)
@@ -133,9 +140,11 @@ for file in CHANGED_FILES:
                 html_errors_summary += f"<li>{err}</li>"
             html_errors_summary += "</ul><hr>"
 
+# Génération du prompt pour l'IA
 review_prompt = generate_prompt(CHANGED_FILES)
 html_review = get_ai_review(review_prompt)
 
+# Combiner les erreurs locales et le rapport IA
 if html_errors_summary:
     html_review = html_errors_summary + html_review
     exit_code = 1
@@ -144,5 +153,8 @@ else:
     exit_code = 0
     mail_subject = "✅ Revue de Code - Code Validé"
 
+# Envoi du mail
 send_email(RECIPIENT_EMAIL, mail_subject, html_review)
+
+# Faire échouer le push si des erreurs détectées
 sys.exit(exit_code)

@@ -80,8 +80,8 @@ body {
   justify-content: center;
 }
 
-/* Ligne vide avant @media (bonne pratique) */
-@media (max-width: 600px) {
+/* Ligne vide avant @media */
+@media (width <= 600px) {
   .form-inscription {
     padding: 1.2em 0.5em;
     box-shadow: 0 4px 16px rgb(50 50 93 / 13%), 0 1.5px 6px rgb(0 0 0 / 8%);

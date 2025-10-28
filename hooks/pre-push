@@ -2,7 +2,7 @@
 
 # Amélioration du hook pre-push : recherche un interpréteur Python cross-plateforme
 
-SCRIPT_PATH="scripts/review_mailer.py"whe
+SCRIPT_PATH="scripts/review_mailer.py"
 
 # DEBUG: informations utiles pour diagnostiquer l'environnement d'exécution du hook
 echo "--- pre-push debug start ---" >&2

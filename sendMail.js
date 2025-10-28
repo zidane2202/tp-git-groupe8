@@ -26,11 +26,8 @@ import fs from "fs";
   // --- 3️⃣ Génération du mail via Gemini (Google GenAI) ---
   const ai = new GoogleGenAI({});
 
-  // --- Fonction pour lire le contenu des fichiers HTML ---
+  // --- Fonction pour lire le contenu des fichiers ---
   function getFileContent(filePath) {
-    if (!filePath.endsWith(".html")) {
-      return null;
-    }
     if (!fs.existsSync(filePath)) {
       return `--- Impossible de lire le fichier: ${filePath} (fichier non trouvé) ---\n`;
     }
@@ -47,7 +44,14 @@ import fs from "fs";
   // --- Fonction pour obtenir les fichiers modifiés ---
   function getChangedFiles() {
     try {
-      const diffOutput = execSync("git diff --cached --name-only").toString();
+      // Essayer d'abord les fichiers en staging (pour les commits en cours)
+      let diffOutput = execSync("git diff --cached --name-only").toString();
+      if (diffOutput.trim()) {
+        return diffOutput.trim().split('\n').filter(file => file.length > 0);
+      }
+      
+      // Si aucun fichier en staging, utiliser le dernier commit
+      diffOutput = execSync("git diff HEAD~1 --name-only").toString();
       return diffOutput.trim().split('\n').filter(file => file.length > 0);
     } catch {
       return [];
@@ -60,7 +64,7 @@ import fs from "fs";
       throw new Error("GEMINI_API_KEY non configurée dans les variables d'environnement");
     }
 
-    // Construire le contenu des fichiers HTML
+    // Construire le contenu des fichiers
     let filesContent = "";
     for (const file of changedFiles) {
       const content = getFileContent(file);
@@ -112,7 +116,12 @@ Contraintes du mail HTML :
   // --- 4️⃣ Lecture du diff et des fichiers modifiés ---
   let diffText = "Aucun diff disponible.";
   try {
+    // Essayer d'abord les fichiers en staging (pour les commits en cours)
     diffText = execSync("git diff --cached").toString();
+    if (!diffText.trim()) {
+      // Si aucun diff en staging, utiliser le dernier commit
+      diffText = execSync("git diff HEAD~1").toString();
+    }
   } catch {
     console.log("⚠️ Impossible de récupérer le diff Git, mail générique sera envoyé.");
   }
@@ -198,14 +207,28 @@ Contraintes du mail HTML :
   }
 
   // --- 7️⃣ Configuration du transporteur SMTP ---
+  // Vérifier les variables d'environnement SMTP
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.error("❌ Variables d'environnement SMTP manquantes :");
+    console.error("   SMTP_USER:", process.env.SMTP_USER ? "✅ Définie" : "❌ Manquante");
+    console.error("   SMTP_PASS:", process.env.SMTP_PASS ? "✅ Définie" : "❌ Manquante");
+    console.error("   Utilisez un fichier .env avec ces variables pour configurer l'envoi d'emails.");
+  }
+
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.gmail.com",
     port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587,
-    secure: process.env.SMTP_SECURE === "true",
+    secure: false, // true pour 465, false pour autres ports
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 60000, // 60 secondes
+    greetingTimeout: 30000,   // 30 secondes
+    socketTimeout: 60000,     // 60 secondes
   });
 
   // --- 8️⃣ Préparation et envoi du mail ---
@@ -221,7 +244,19 @@ Contraintes du mail HTML :
     await transporter.sendMail(mailOptions);
     console.log("📧 Mail envoyé à", toEmails);
   } catch (err) {
-    console.error("❌ Erreur envoi mail :", err);
+    console.error("❌ Erreur envoi mail :", err.message);
+    console.error("❌ Code d'erreur :", err.code);
+    console.error("❌ Type d'erreur :", err.errno);
+    
+    // Vérifier si c'est un problème d'authentification
+    if (err.code === 'EAUTH') {
+      console.error("🔐 Problème d'authentification SMTP. Vérifiez vos identifiants.");
+    } else if (err.code === 'ECONNECTION') {
+      console.error("🌐 Problème de connexion SMTP. Vérifiez votre connexion internet.");
+    } else if (err.code === 'ETIMEOUT') {
+      console.error("⏰ Timeout SMTP. Le serveur met trop de temps à répondre.");
+    }
+    
     console.log("\n--- Contenu HTML non envoyé (pour débogage) ---\n");
     console.log(htmlBody);
     console.log("\n----------------------------------------------------\n");

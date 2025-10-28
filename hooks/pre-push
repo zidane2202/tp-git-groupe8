@@ -2,7 +2,32 @@
 
 # Amélioration du hook pre-push : recherche un interpréteur Python cross-plateforme
 
-SCRIPT_PATH="scripts/review_mailer.py"
+SCRIPT_PATH="scripts/review_mailer.py"whe
+
+# DEBUG: informations utiles pour diagnostiquer l'environnement d'exécution du hook
+echo "--- pre-push debug start ---" >&2
+echo "User: $(whoami)" >&2
+echo "PWD: $(pwd)" >&2
+echo "Git dir: $(git rev-parse --git-dir 2>/dev/null)" >&2
+echo "Shell: $SHELL" >&2
+echo "PATH: $PATH" >&2
+
+echo "command -v python3: " >&2; command -v python3 2>/dev/null || echo "(python3 not found)" >&2
+echo "command -v python: " >&2; command -v python 2>/dev/null || echo "(python not found)" >&2
+echo "command -v py: " >&2; command -v py 2>/dev/null || echo "(py not found)" >&2
+
+# Afficher type/which pour plus d'infos (peut afficher plusieurs résultats)
+{ type -a python3 2>/dev/null || true; } >&2
+{ type -a python 2>/dev/null || true; } >&2
+{ type -a py 2>/dev/null || true; } >&2
+
+# Tenter d'exécuter les versions (capturer les sorties)
+python --version 2>&1 || echo "python --version failed" >&2
+python3 --version 2>&1 || echo "python3 --version failed" >&2
+py -3 -V 2>&1 || echo "py -3 -V failed" >&2
+
+# Fin debug
+echo "--- pre-push debug end ---" >&2
 
 # Email de l'auteur du commit
 RECIPIENT_EMAIL=$(git log -1 --pretty=format:'%ae')
@@ -17,7 +42,7 @@ elif command -v python >/dev/null 2>&1; then
   PY_EXEC="python"
 else
   # Essayer le lanceur Windows 'py -3'
-  if py -3 -V >/dev/null 2>&1; then
+  if command -v py >/dev/null 2>&1 && py -3 -V >/dev/null 2>&1; then
     PY_EXEC="py -3"
   else
     echo "Python introuvable. Installez Python ou ajustez le hook pour utiliser le bon exécutable." >&2
@@ -34,7 +59,7 @@ fi
 
 EXIT_CODE=$?
 if [ $EXIT_CODE -ne 0 ]; then
-    echo "🚫 Push annulé : des erreurs de code ont été détectées."
+    echo "🚫 Push annulé : des erreurs de code ont été détectées." >&2
     exit 1
 fi
 

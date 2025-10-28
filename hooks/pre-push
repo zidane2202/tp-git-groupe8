@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Amélioration du hook pre-push : recherche un interpréteur Python cross-plateforme
+# --- Hook pre-push pour bloquer le push si des erreurs détectées ---
 
 SCRIPT_PATH="scripts/review_mailer.py"
 
@@ -10,27 +10,8 @@ RECIPIENT_EMAIL=$(git log -1 --pretty=format:'%ae')
 # Tous les fichiers staged pour le push
 CHANGED_FILES=$(git diff --cached --name-only | paste -sd "," -)
 
-# Trouver un exécutable Python
-if command -v python3 >/dev/null 2>&1; then
-  PY_EXEC="python3"
-elif command -v python >/dev/null 2>&1; then
-  PY_EXEC="python"
-else
-  # Essayer le lanceur Windows 'py -3'
-  if py -3 -V >/dev/null 2>&1; then
-    PY_EXEC="py -3"
-  else
-    echo "Python introuvable. Installez Python ou ajustez le hook pour utiliser le bon exécutable." >&2
-    exit 1
-  fi
-fi
-
-# Exécuter le script (gérer le cas où PY_EXEC contient un espace pour 'py -3')
-if [ "$PY_EXEC" = "py -3" ]; then
-  eval "$PY_EXEC \"$SCRIPT_PATH\" \"$RECIPIENT_EMAIL\" \"$CHANGED_FILES\""
-else
-  "$PY_EXEC" "$SCRIPT_PATH" "$RECIPIENT_EMAIL" "$CHANGED_FILES"
-fi
+# Exécution du script Python
+python3 "$SCRIPT_PATH" "$RECIPIENT_EMAIL" "$CHANGED_FILES"
 
 EXIT_CODE=$?
 if [ $EXIT_CODE -ne 0 ]; then

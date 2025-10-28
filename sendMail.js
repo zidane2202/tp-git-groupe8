@@ -47,7 +47,14 @@ import fs from "fs";
   // --- Fonction pour obtenir les fichiers modifiés ---
   function getChangedFiles() {
     try {
-      const diffOutput = execSync("git diff --cached --name-only").toString();
+      // Essayer d'abord les fichiers en staging (pour les commits en cours)
+      let diffOutput = execSync("git diff --cached --name-only").toString();
+      if (diffOutput.trim()) {
+        return diffOutput.trim().split('\n').filter(file => file.length > 0);
+      }
+      
+      // Si aucun fichier en staging, utiliser le dernier commit
+      diffOutput = execSync("git diff HEAD~1 --name-only").toString();
       return diffOutput.trim().split('\n').filter(file => file.length > 0);
     } catch {
       return [];
@@ -112,7 +119,12 @@ Contraintes du mail HTML :
   // --- 4️⃣ Lecture du diff et des fichiers modifiés ---
   let diffText = "Aucun diff disponible.";
   try {
+    // Essayer d'abord les fichiers en staging (pour les commits en cours)
     diffText = execSync("git diff --cached").toString();
+    if (!diffText.trim()) {
+      // Si aucun diff en staging, utiliser le dernier commit
+      diffText = execSync("git diff HEAD~1").toString();
+    }
   } catch {
     console.log("⚠️ Impossible de récupérer le diff Git, mail générique sera envoyé.");
   }

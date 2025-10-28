@@ -1,25 +1,30 @@
-import os 
+import os
 import sys
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from google import genai
+import google.generativeai as genai
 from html.parser import HTMLParser
 
 # --- Configuration ---
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
-SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
+GEMINI_API_KEY = "AIzaSyCnIcTxzWzfN11y6AF0KmOM88JMJFNXeGg"
+GMAIL_APP_PASSWORD ="visp mkca txri giym"
+SENDER_EMAIL ="ondoatamar@gmail.com"
 
+# Valeurs par défaut si non définies (utile pour tests)
+if not SENDER_EMAIL:
+    SENDER_EMAIL = "tamar.ondoa@icloud.com"
+
+# Vérification des arguments
 if len(sys.argv) < 3:
     print("Erreur: L'email du destinataire et la liste des fichiers modifiés sont requis.")
     sys.exit(1)
 
 RECIPIENT_EMAIL = sys.argv[1]
 
-# Supporte fichiers séparés par des virgules ou espaces
+# Supporte fichiers séparés par virgules ou espaces
 raw_files = sys.argv[2]
-CHANGED_FILES = [f.strip() for f in raw_files.replace(',', ' ').split()]
+CHANGED_FILES = [f.strip() for f in raw_files.replace(',', ' ').split() if f.strip()]
 
 # --- Vérification syntaxe HTML ---
 class SyntaxChecker(HTMLParser):
@@ -46,18 +51,17 @@ def get_file_content(file_path):
     if not file_path.endswith(".html"):
         return None
     if not os.path.isfile(file_path):
-        return f"--- Impossible de lire le fichier: {file_path} (fichier non trouvé) ---\n"
+        return f"--- Impossible de lire le fichier: {file_path} (non trouvé) ---\n"
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()[:200]
-        # Ajouter numéro de ligne pour faciliter la lecture
         numbered_content = "\n".join([f"{i+1}: {line}" for i, line in enumerate(lines)])
         return numbered_content
     except Exception as e:
         return f"--- Impossible de lire le fichier: {file_path} (Erreur: {e}) ---\n"
 
 def generate_prompt(changed_files):
-    """Génère le prompt original pour l'IA."""
+    """Crée le prompt d'analyse pour Gemini."""
     files_content = ""
     for file in changed_files:
         content = get_file_content(file)
@@ -90,45 +94,50 @@ Contraintes du mail HTML :
     return prompt
 
 def get_ai_review(prompt):
+    """Analyse avec Gemini, ou génère un rapport local si clé absente."""
+    if not GEMINI_API_KEY:
+        return "<h3>Mode hors ligne</h3><p>Aucune clé GEMINI_API_KEY détectée. Rapport simulé localement.</p>"
+
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt
-        )
+        genai.configure(api_key=GEMINI_API_KEY)
+        response = genai.generate_text(model="gemini-1.5-flash", prompt=prompt)
         html_content = response.text.strip()
         if html_content.startswith("```html"):
-            html_content = html_content.strip("```html").strip("```").strip()
+            html_content = html_content.replace("```html", "").replace("```", "").strip()
         return html_content
     except Exception as e:
         return f"<h1>Erreur d'API Gemini</h1><p>Impossible d'obtenir la revue de code. Erreur: {e}</p>"
 
 def send_email(recipient, subject, html_body):
+    """Envoie le mail HTML avec le rapport de revue de code."""
     try:
+        if not GMAIL_APP_PASSWORD:
+            print("⚠️ Aucun mot de passe d'application Gmail configuré. Mail non envoyé.")
+            print("\n--- Contenu du mail ---\n", html_body, "\n------------------------\n")
+            return
+
         msg = MIMEMultipart('alternative')
         msg['From'] = SENDER_EMAIL
         msg['To'] = recipient
         msg['Subject'] = subject
         msg.attach(MIMEText(html_body, 'html'))
 
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.ehlo()
-        server.login(SENDER_EMAIL, GMAIL_APP_PASSWORD)
-        server.sendmail(SENDER_EMAIL, recipient, msg.as_string())
-        server.close()
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(SENDER_EMAIL, GMAIL_APP_PASSWORD)
+            server.sendmail(SENDER_EMAIL, recipient, msg.as_string())
 
-        print(f"Succès: Email de revue de code envoyé à {recipient}")
+        print(f"✅ Email de revue de code envoyé à {recipient}")
     except Exception as e:
-        print(f"Erreur: Échec de l'envoi de l'email à {recipient}. Erreur: {e}")
-        print("\n--- Contenu HTML non envoyé (pour débogage) ---\n")
+        print(f"❌ Erreur: impossible d'envoyer l'email à {recipient}. Erreur: {e}")
+        print("\n--- Contenu HTML non envoyé ---\n")
         print(html_body)
-        print("\n----------------------------------------------------\n")
+        print("\n---------------------------------\n")
 
 # --- Logique principale ---
 print(f"Début de l'analyse pour le push de: {RECIPIENT_EMAIL}")
 print(f"Fichiers modifiés: {', '.join(CHANGED_FILES)}")
 
-# Vérification de la syntaxe HTML locale
+# Vérification syntaxique locale
 html_errors_summary = ""
 for file in CHANGED_FILES:
     content = get_file_content(file)
@@ -140,11 +149,11 @@ for file in CHANGED_FILES:
                 html_errors_summary += f"<li>{err}</li>"
             html_errors_summary += "</ul><hr>"
 
-# Génération du prompt pour l'IA
+# Génération de la revue IA
 review_prompt = generate_prompt(CHANGED_FILES)
 html_review = get_ai_review(review_prompt)
 
-# Combiner les erreurs locales et le rapport IA
+# Fusion des résultats
 if html_errors_summary:
     html_review = html_errors_summary + html_review
     exit_code = 1
@@ -153,8 +162,8 @@ else:
     exit_code = 0
     mail_subject = "✅ Revue de Code - Code Validé"
 
-# Envoi du mail
+# Envoi du rapport
 send_email(RECIPIENT_EMAIL, mail_subject, html_review)
 
-# Faire échouer le push si des erreurs détectées
+# Code de sortie pour le hook
 sys.exit(exit_code)

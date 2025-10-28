@@ -17,6 +17,13 @@
           "-webkit-overflow-scrolling"
         ]
       }
-    ]
+    ],
+    "axe/text-alternatives": [
+      "default",
+      {
+        "image-alt": "off"
+      }
+    ],
+    "disown-opener": "off"
   }
 }

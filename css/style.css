@@ -1687,3 +1687,6 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4 {
 /* small responsive adjustments */
 @media (max-width:767.98px){ .ff-stage{ height:640px } .ff-card, .ff-svg{ width:90% } .ff-card{ padding:20px } }
 
+.dotted {
+  background-image: url('../images/dotted.png');
+}
